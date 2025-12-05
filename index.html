@@ -84,7 +84,7 @@
                 // Fetch all data in parallel
                 const [greenData, airData, elevationData] = await Promise.all([
                     fetchGreenSpaces(lat, lng),
-                    fetchAirQuality(lat, lng),
+                    fetchAQI(lat, lng),
                     fetchElevation(lat, lng)
                 ]);
 
@@ -187,7 +187,7 @@
             score += greenScore;
             
             // Air quality factor (-20 to +20 points)
-            const pm25 = airData?.value;
+            const pm25 = airData?.pm25;
             if (pm25 !== null && pm25 !== undefined) {
                 if (pm25 < 12) score += 20;      // WHO good
                 else if (pm25 < 35) score += 10; // WHO moderate
@@ -205,7 +205,7 @@
 
         // Display results in sidebar
         function displayResults(score, greenData, airData, elevationData, lat, lng) {
-            const pm25 = airData?.value;
+            const pm25 = airData?.pm25;
             const elevation = elevationData?.elevation;
             
             document.getElementById('results').innerHTML = `
