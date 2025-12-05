@@ -139,50 +139,36 @@
             };
         }
 
-        // OpenAQ API configuration - requires API key for v3
-        const OPENAQ_API_KEY = "e43a81a8bc684ff151297a85a886fa0135690ee07d8392ef201baca1f2f97de3"; // Set your API key here: "YOUR-OPENAQ-API-KEY"
-        
-        // Fetch nearest PM2.5 using OpenAQ
+        // Fetch air quality using WAQI (World Air Quality Index) - CORS friendly
         async function fetchAQI(lat, lon) {
           console.log('🌬️ Fetching air quality data for:', lat, lon);
           
-          if (!OPENAQ_API_KEY) {
-            console.warn('⚠️ OpenAQ API key not set. Get one from: https://openaq.org/');
-            return { value: null, error: 'API key required' };
-          }
-          
           try {
-            const url = `https://api.openaq.org/v3/parameters/2/latest?coordinates=${lat},${lon}&radius=25000&limit=10`;
-            console.log('📡 OpenAQ request:', url);
+            const url = `https://api.waqi.info/feed/geo:${lat};${lon}/?token=demo`;
+            console.log('📡 WAQI request:', url);
             
-            const res = await fetch(url, {
-              headers: {
-                'X-API-Key': OPENAQ_API_KEY
-              }
-            });
-            
-            console.log('📊 OpenAQ response status:', res.status);
+            const res = await fetch(url);
+            console.log('📊 WAQI response status:', res.status);
             
             if (!res.ok) {
-              const errorText = await res.text();
-              console.error('❌ OpenAQ API error:', res.status, errorText);
+              console.error('❌ WAQI API error:', res.status);
               return { value: null, error: `API error: ${res.status}` };
             }
             
             const data = await res.json();
-            console.log('✅ OpenAQ data received:', data);
+            console.log('✅ WAQI data received:', data);
             
-            if (!data.results || data.results.length === 0) {
+            if (data.status !== 'ok' || !data.data) {
               console.warn('⚠️ No air quality data found for this location');
               return { value: null, error: 'No data available' };
             }
             
-            const pm25 = data.results[0].value;
+            const pm25 = data.data.iaqi?.pm25?.v || null;
             console.log('🎯 PM2.5 value:', pm25);
             
             return { value: pm25 };
           } catch(err) {
-            console.error('💥 OpenAQ fetch error:', err);
+            console.error('💥 WAQI fetch error:', err);
             return { value: null, error: err.message };
           }
         }
@@ -220,7 +206,7 @@
             score += greenScore;
             
             // Air quality factor (-20 to +20 points)
-            const pm25 = airData?.pm25;
+            const pm25 = airData?.value;
             if (pm25 !== null && pm25 !== undefined) {
                 if (pm25 < 12) score += 20;      // WHO good
                 else if (pm25 < 35) score += 10; // WHO moderate
@@ -238,7 +224,7 @@
 
         // Display results in sidebar
         function displayResults(score, greenData, airData, elevationData, lat, lng) {
-            const pm25 = airData?.pm25;
+            const pm25 = airData?.value;
             const elevation = elevationData?.elevation;
             
             document.getElementById('results').innerHTML = `
