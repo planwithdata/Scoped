@@ -155,16 +155,16 @@
           
           const nearestCityDistance = Math.min(...Object.values(cityDistances));
           
-          // Base PM2.5: higher near cities, lower in rural areas
-          let basePM25 = Math.max(5, 60 - (nearestCityDistance * 100));
+          // Base AQI: higher near cities, lower in rural areas
+          let baseAQI = Math.max(10, 120 - (nearestCityDistance * 200));
           
           // Add some randomness for realism
           const randomFactor = 0.8 + (Math.random() * 0.4); // 0.8 to 1.2
-          const pm25 = Math.round(basePM25 * randomFactor);
+          const aqi = Math.round(baseAQI * randomFactor);
           
-          console.log('🎯 Estimated PM2.5 value:', pm25);
+          console.log('🎯 Estimated AQI value:', pm25);
           
-          return { value: pm25 };
+          return { value: aqi };
         }
 
         // Compatibility wrapper
@@ -199,13 +199,13 @@
             const greenScore = Math.min(greenData.count * 3, 30);
             score += greenScore;
             
-            // Air quality factor (-20 to +20 points)
-            const pm25 = airData?.value;
-            if (pm25 !== null && pm25 !== undefined) {
-                if (pm25 < 12) score += 20;      // WHO good
-                else if (pm25 < 35) score += 10; // WHO moderate
-                else if (pm25 < 55) score -= 5;  // WHO unhealthy
-                else score -= 20;                // WHO very unhealthy
+            // Air quality factor (-20 to +20 points) - using AQI scale
+            const aqi = airData?.value;
+            if (aqi !== null && aqi !== undefined) {
+                if (aqi <= 50) score += 20;      // Good
+                else if (aqi <= 100) score += 10; // Moderate
+                else if (aqi <= 150) score -= 5;  // Unhealthy for Sensitive
+                else score -= 20;                 // Unhealthy or worse
             }
             
             // Elevation bonus (higher = cleaner air, max 10 points)
@@ -218,7 +218,7 @@
 
         // Display results in sidebar
         function displayResults(score, greenData, airData, elevationData, lat, lng) {
-            const pm25 = airData?.value;
+            const aqi = airData?.value;
             const elevation = elevationData?.elevation;
             
             document.getElementById('results').innerHTML = `
@@ -232,8 +232,8 @@
                 <p>Types: ${greenData.types.join(', ') || 'None detected'}</p>
                 
                 <h4>🌬️ Air Quality</h4>
-                <p>PM2.5: ${pm25 ? pm25.toFixed(1) + ' μg/m³' : 'No data available'}</p>
-                ${pm25 ? `<p>Status: ${pm25 < 12 ? 'Good' : pm25 < 35 ? 'Moderate' : pm25 < 55 ? 'Unhealthy' : 'Very Unhealthy'}</p>` : ''}
+                <p>AQI: ${pm25 ? pm25 : 'No data available'}</p>
+                ${pm25 ? `<p style="color: ${pm25 <= 50 ? 'green' : pm25 <= 100 ? '#DAA520' : pm25 <= 150 ? 'orange' : pm25 <= 200 ? 'red' : pm25 <= 300 ? 'purple' : 'maroon'}">Category: ${pm25 <= 50 ? 'Good' : pm25 <= 100 ? 'Moderate' : pm25 <= 150 ? 'Unhealthy for Sensitive Groups' : pm25 <= 200 ? 'Unhealthy' : pm25 <= 300 ? 'Very Unhealthy' : 'Hazardous'}</p>` : ''}
                 
                 <h4>⛰️ Elevation</h4>
                 <p>${elevation ? elevation.toFixed(0) + 'm above sea level' : 'No data available'}</p>
