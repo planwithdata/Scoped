@@ -301,45 +301,54 @@
                 <div class="loading-state">
                     <div class="loading-spinner"></div>
                     <h3>Analyzing Location...</h3>
-                    <p>Gathering sustainability data from multiple sources</p>
+                    <p>Gathering comprehensive sustainability data</p>
                 </div>
             `;
             
             try {
-                // Fetch all data
-                const [greenData, airData, weatherData, climateData, healthcareData, educationData, transportData, servicesData] = await Promise.all([
-                    fetchGreenSpaces(lat, lng).catch(() => ({ count: 0, waterCount: 0 })),
+                // Fetch all data with comprehensive error handling
+                const [greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData] = await Promise.all([
+                    fetchGreenSpaces(lat, lng).catch(() => ({ count: 0, waterCount: 0, types: [] })),
                     fetchRealAQI(lat, lng).catch(() => fetchAQI(lat, lng)),
-                    fetchWeather(lat, lng).catch(() => ({ temperature: null, humidity: null })),
-                    fetchClimateData(lat, lng).catch(() => ({ solarRadiation: null })),
-                    fetchInfrastructure(lat, lng, 'healthcare').catch(() => ({ total: 0 })),
-                    fetchInfrastructure(lat, lng, 'education').catch(() => ({ total: 0 })),
-                    fetchInfrastructure(lat, lng, 'transport').catch(() => ({ total: 0 })),
-                    fetchInfrastructure(lat, lng, 'services').catch(() => ({ total: 0 }))
+                    fetchWeather(lat, lng).catch(() => ({ temperature: null, humidity: null, pressure: null, windSpeed: null })),
+                    fetchClimateData(lat, lng).catch(() => ({ solarRadiation: null, nasaTemperature: null, nasaHumidity: null })),
+                    fetchElevation(lat, lng).catch(() => ({ elevation: null })),
+                    fetchNoisePollution(lat, lng).catch(() => ({ noiseLevel: null, roadDensity: 0, railwayCount: 0 })),
+                    fetchBiodiversity(lat, lng).catch(() => ({ protectedAreas: 0, naturalAreas: 0 })),
+                    fetchInfrastructure(lat, lng, 'healthcare').catch(() => ({ total: 0, hospitals: 0, clinics: 0, pharmacies: 0 })),
+                    fetchInfrastructure(lat, lng, 'education').catch(() => ({ total: 0, schools: 0, colleges: 0, libraries: 0 })),
+                    fetchInfrastructure(lat, lng, 'transport').catch(() => ({ total: 0, busStops: 0, stations: 0 })),
+                    fetchInfrastructure(lat, lng, 'services').catch(() => ({ total: 0, banks: 0, markets: 0, police: 0 }))
                 ]);
 
-                // Calculate score
-                const score = calculateSustainabilityScore(greenData, airData, {}, weatherData, climateData, {}, {}, healthcareData, educationData, transportData, servicesData);
+                // Calculate comprehensive score
+                const score = calculateSustainabilityScore(greenData, airData, elevationData, weatherData, climateData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData);
                 
-                // Save to history
+                // Save to history with all data
                 const clickData = {
                     lat: lat.toFixed(4),
                     lng: lng.toFixed(4),
                     score,
-                    timestamp: new Date().toLocaleString()
+                    timestamp: new Date().toLocaleString(),
+                    aqi: airData?.value,
+                    pm25: airData?.pm25Concentration,
+                    temperature: weatherData?.temperature,
+                    greenSpaces: greenData.count,
+                    healthcare: healthcareData?.total || 0,
+                    noiseLevel: noiseData?.noiseLevel
                 };
                 previousClicks.unshift(clickData);
                 if (previousClicks.length > 10) previousClicks = previousClicks.slice(0, 10);
                 localStorage.setItem('scopedClicks', JSON.stringify(previousClicks));
                 
-                // Display results
-                displayResults(score, greenData, airData, weatherData, climateData, healthcareData, educationData, transportData, servicesData, lat, lng);
+                // Display comprehensive results
+                displayResults(score, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, lat, lng);
                 
                 // Add marker
                 clearMarkers();
                 const marker = new maplibregl.Marker({ color: getScoreColor(score) })
                     .setLngLat([lng, lat])
-                    .setPopup(new maplibregl.Popup().setHTML(`<strong>Sustainability Score: ${score}/100</strong>`))
+                    .setPopup(new maplibregl.Popup().setHTML(`<strong>Sustainability Score: ${score}/100</strong><br><small>${getScoreCategory(score)}</small>`))
                     .addTo(map);
                 currentMarkers.push(marker);
                 
@@ -354,8 +363,8 @@
             }
         });
 
-        // Display results function
-        function displayResults(score, greenData, airData, weatherData, climateData, healthcareData, educationData, transportData, servicesData, lat, lng) {
+        // Enhanced display results function with all data categories
+        function displayResults(score, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, lat, lng) {
             const scoreColor = getScoreColor(score);
             const scoreCategory = getScoreCategory(score);
             
@@ -368,43 +377,110 @@
                     <div class="score-text">📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}</div>
                 </div>
                 
-                <div class="metrics-grid">
-                    <div class="metric-card">
-                        <div class="metric-title">🌬️ Air Quality</div>
-                        <div class="metric-value">${airData?.value || '--'}</div>
-                        <div class="metric-subtitle">AQI Index</div>
-                    </div>
-                    
-                    <div class="metric-card">
-                        <div class="metric-title">🌳 Green Spaces</div>
-                        <div class="metric-value">${greenData.count || 0}</div>
-                        <div class="metric-subtitle">Parks & Nature</div>
-                    </div>
-                    
-                    <div class="metric-card">
-                        <div class="metric-title">🏥 Healthcare</div>
-                        <div class="metric-value">${healthcareData?.total || 0}</div>
-                        <div class="metric-subtitle">Facilities nearby</div>
-                    </div>
-                    
-                    <div class="metric-card">
-                        <div class="metric-title">🏫 Education</div>
-                        <div class="metric-value">${educationData?.total || 0}</div>
-                        <div class="metric-subtitle">Schools & Libraries</div>
-                    </div>
-                    
-                    <div class="metric-card">
-                        <div class="metric-title">🚌 Transport</div>
-                        <div class="metric-value">${transportData?.total || 0}</div>
-                        <div class="metric-subtitle">Public stops</div>
-                    </div>
-                    
-                    <div class="metric-card">
-                        <div class="metric-title">☀️ Solar Energy</div>
-                        <div class="metric-value">${climateData?.solarRadiation ? climateData.solarRadiation.toFixed(1) : '--'}</div>
-                        <div class="metric-subtitle">kWh/m²/day</div>
+                <!-- Environmental Health (40%) -->
+                <div style="margin: 20px 0; padding: 15px; background: linear-gradient(135deg, #e8f5e8, #f0f8f0); border-radius: 12px; border-left: 4px solid #4CAF50;">
+                    <h3 style="margin: 0 0 15px 0; color: #2e7d32;">🌱 Environmental Health (40%)</h3>
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-title">🌬️ Air Quality Index</div>
+                            <div class="metric-value">${airData?.value || '--'}</div>
+                            <div class="metric-subtitle">${airData?.pm25Concentration ? `PM2.5: ${airData.pm25Concentration.toFixed(1)} μg/m³` : 'AQI Scale'}</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-title">🌳 Green Infrastructure</div>
+                            <div class="metric-value">${greenData.count || 0}</div>
+                            <div class="metric-subtitle">${greenData.waterCount || 0} water bodies</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-title">🌡️ Climate Comfort</div>
+                            <div class="metric-value">${weatherData?.temperature ? `${weatherData.temperature.toFixed(1)}°C` : '--'}</div>
+                            <div class="metric-subtitle">${weatherData?.humidity ? `${weatherData.humidity}% humidity` : 'Temperature'}</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-title">🔊 Noise Environment</div>
+                            <div class="metric-value">${noiseData?.noiseLevel !== null ? `${noiseData.noiseLevel}/100` : '--'}</div>
+                            <div class="metric-subtitle">${noiseData?.roadDensity || 0} roads nearby</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-title">🌿 Biodiversity</div>
+                            <div class="metric-value">${(biodiversityData?.protectedAreas || 0) + (biodiversityData?.naturalAreas || 0)}</div>
+                            <div class="metric-subtitle">Protected & natural areas</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-title">⛰️ Elevation</div>
+                            <div class="metric-value">${elevationData?.elevation ? `${elevationData.elevation}m` : '--'}</div>
+                            <div class="metric-subtitle">Above sea level</div>
+                        </div>
                     </div>
                 </div>
+                
+                <!-- Social Infrastructure (35%) -->
+                <div style="margin: 20px 0; padding: 15px; background: linear-gradient(135deg, #fff3e0, #fef7ed); border-radius: 12px; border-left: 4px solid #ff9800;">
+                    <h3 style="margin: 0 0 15px 0; color: #e65100;">🏥 Social Infrastructure (35%)</h3>
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-title">🏥 Healthcare Access</div>
+                            <div class="metric-value">${healthcareData?.total || 0}</div>
+                            <div class="metric-subtitle">${healthcareData?.hospitals || 0}H • ${healthcareData?.clinics || 0}C • ${healthcareData?.pharmacies || 0}P</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-title">🏫 Education Facilities</div>
+                            <div class="metric-value">${educationData?.total || 0}</div>
+                            <div class="metric-subtitle">${educationData?.schools || 0}S • ${educationData?.colleges || 0}C • ${educationData?.libraries || 0}L</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-title">🚌 Public Transport</div>
+                            <div class="metric-value">${transportData?.total || 0}</div>
+                            <div class="metric-subtitle">${transportData?.busStops || 0} bus • ${transportData?.stations || 0} rail</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Economic Sustainability (25%) -->
+                <div style="margin: 20px 0; padding: 15px; background: linear-gradient(135deg, #f3e5f5, #faf5ff); border-radius: 12px; border-left: 4px solid #9c27b0;">
+                    <h3 style="margin: 0 0 15px 0; color: #6a1b9a;">🏪 Economic Sustainability (25%)</h3>
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-title">🏦 Essential Services</div>
+                            <div class="metric-value">${servicesData?.total || 0}</div>
+                            <div class="metric-subtitle">${servicesData?.banks || 0}B • ${servicesData?.markets || 0}M • ${servicesData?.police || 0}P</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-title">☀️ Energy Potential</div>
+                            <div class="metric-value">${climateData?.solarRadiation ? climateData.solarRadiation.toFixed(1) : '--'}</div>
+                            <div class="metric-subtitle">kWh/m²/day solar</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Additional Weather Data -->
+                ${weatherData?.pressure || weatherData?.windSpeed ? `
+                <div style="margin: 20px 0; padding: 15px; background: linear-gradient(135deg, #e3f2fd, #f1f8ff); border-radius: 12px; border-left: 4px solid #2196f3;">
+                    <h3 style="margin: 0 0 15px 0; color: #1565c0;">🌤️ Additional Weather Data</h3>
+                    <div class="metrics-grid">
+                        ${weatherData?.pressure ? `
+                        <div class="metric-card">
+                            <div class="metric-title">🌪️ Pressure</div>
+                            <div class="metric-value">${weatherData.pressure}</div>
+                            <div class="metric-subtitle">hPa</div>
+                        </div>` : ''}
+                        
+                        ${weatherData?.windSpeed ? `
+                        <div class="metric-card">
+                            <div class="metric-title">🌬️ Wind Speed</div>
+                            <div class="metric-value">${weatherData.windSpeed.toFixed(1)}</div>
+                            <div class="metric-subtitle">m/s</div>
+                        </div>` : ''}
+                    </div>
+                </div>` : ''}
             `;
         }
 
@@ -432,6 +508,9 @@
 
         function closePopup(popupId) {
             document.getElementById(popupId).style.display = 'none';
+            if (popupId === 'history-popup') {
+                hideHistoryMarkers();
+            }
         }
 
         function changeBasemap(type) {
@@ -471,13 +550,76 @@
                 return;
             }
             
-            listDiv.innerHTML = previousClicks.map(click => `
-                <div class="history-item" onclick="flyToLocation(${click.lat}, ${click.lng})">
-                    <div class="history-score">Score: ${click.score}/100</div>
-                    <div class="history-location">${click.lat}, ${click.lng}</div>
-                    <div style="font-size: 11px; color: #999;">${click.timestamp}</div>
-                </div>
-            `).join('');
+            // Show history markers on map
+            showHistoryMarkers();
+            
+            listDiv.innerHTML = previousClicks.map(click => {
+                const scoreColor = getScoreColor(click.score);
+                return `
+                    <div class="history-item" onclick="flyToLocation(${click.lat}, ${click.lng})" style="border-left: 4px solid ${scoreColor};">
+                        <div class="history-score" style="color: ${scoreColor};">Score: ${click.score}/100 • ${getScoreCategory(click.score)}</div>
+                        <div class="history-location">${click.lat}, ${click.lng}</div>
+                        <div style="font-size: 11px; color: #999; margin-top: 4px;">
+                            ${click.aqi ? `AQI: ${click.aqi}` : ''} 
+                            ${click.temperature ? `• ${click.temperature.toFixed(1)}°C` : ''}
+                            ${click.greenSpaces ? `• ${click.greenSpaces} green` : ''}
+                        </div>
+                        <div style="font-size: 10px; color: #bbb;">${click.timestamp}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        let historyMarkers = [];
+        
+        function showHistoryMarkers() {
+            // Clear existing history markers
+            historyMarkers.forEach(marker => marker.remove());
+            historyMarkers = [];
+            
+            // Add markers for all previous clicks
+            previousClicks.forEach((click, index) => {
+                const lat = parseFloat(click.lat);
+                const lng = parseFloat(click.lng);
+                const scoreColor = getScoreColor(click.score);
+                
+                // Create custom marker element
+                const markerEl = document.createElement('div');
+                markerEl.style.cssText = `
+                    width: 24px; height: 24px; border-radius: 50%;
+                    background: ${scoreColor}; border: 2px solid white;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                    display: flex; align-items: center; justify-content: center;
+                    color: white; font-size: 10px; font-weight: bold;
+                    cursor: pointer; transition: transform 0.2s ease;
+                `;
+                markerEl.textContent = click.score;
+                
+                markerEl.addEventListener('mouseenter', () => {
+                    markerEl.style.transform = 'scale(1.2)';
+                });
+                markerEl.addEventListener('mouseleave', () => {
+                    markerEl.style.transform = 'scale(1)';
+                });
+                
+                const marker = new maplibregl.Marker(markerEl)
+                    .setLngLat([lng, lat])
+                    .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(`
+                        <div style="text-align: center;">
+                            <strong style="color: ${scoreColor};">Score: ${click.score}/100</strong><br>
+                            <small>${getScoreCategory(click.score)}</small><br>
+                            <small style="color: #666;">${click.timestamp}</small>
+                        </div>
+                    `))
+                    .addTo(map);
+                
+                historyMarkers.push(marker);
+            });
+        }
+        
+        function hideHistoryMarkers() {
+            historyMarkers.forEach(marker => marker.remove());
+            historyMarkers = [];
         }
 
         function flyToLocation(lat, lng) {
