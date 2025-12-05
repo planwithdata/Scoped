@@ -84,7 +84,7 @@
                 // Fetch all data in parallel
                 const [greenData, airData, elevationData] = await Promise.all([
                     fetchGreenSpaces(lat, lng),
-                    fetchAQI(lat, lng),
+                    fetchAirQuality(lat, lng),
                     fetchElevation(lat, lng)
                 ]);
 
@@ -162,7 +162,7 @@
           const randomFactor = 0.8 + (Math.random() * 0.4); // 0.8 to 1.2
           const aqi = Math.round(baseAQI * randomFactor);
           
-          console.log('🎯 Estimated AQI value:', pm25);
+          console.log('🎯 Estimated AQI value:', aqi);
           
           return { value: aqi };
         }
@@ -232,8 +232,8 @@
                 <p>Types: ${greenData.types.join(', ') || 'None detected'}</p>
                 
                 <h4>🌬️ Air Quality</h4>
-                <p>AQI: ${pm25 ? pm25 : 'No data available'}</p>
-                ${pm25 ? `<p style="color: ${pm25 <= 50 ? 'green' : pm25 <= 100 ? '#DAA520' : pm25 <= 150 ? 'orange' : pm25 <= 200 ? 'red' : pm25 <= 300 ? 'purple' : 'maroon'}">Category: ${pm25 <= 50 ? 'Good' : pm25 <= 100 ? 'Moderate' : pm25 <= 150 ? 'Unhealthy for Sensitive Groups' : pm25 <= 200 ? 'Unhealthy' : pm25 <= 300 ? 'Very Unhealthy' : 'Hazardous'}</p>` : ''}
+                <p>AQI: ${aqi ? aqi : 'No data available'}</p>
+                ${aqi ? `<p style="color: ${aqi <= 50 ? 'green' : aqi <= 100 ? '#DAA520' : aqi <= 150 ? 'orange' : aqi <= 200 ? 'red' : aqi <= 300 ? 'purple' : 'maroon'}">Category: ${aqi <= 50 ? 'Good' : aqi <= 100 ? 'Moderate' : aqi <= 150 ? 'Unhealthy for Sensitive Groups' : aqi <= 200 ? 'Unhealthy' : aqi <= 300 ? 'Very Unhealthy' : 'Hazardous'}</p>` : ''}
                 
                 <h4>⛰️ Elevation</h4>
                 <p>${elevation ? elevation.toFixed(0) + 'm above sea level' : 'No data available'}</p>
