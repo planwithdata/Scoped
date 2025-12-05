@@ -133,16 +133,27 @@
             };
         }
 
-        // Fetch air quality using OpenAQ API
+        // Fetch air quality using OpenAQ API v3
         async function fetchAirQuality(lat, lng) {
             const response = await fetch(
-                `https://api.openaq.org/v2/latest?coordinates=${lat},${lng}&radius=25000&limit=1&parameter=pm25`
+                `https://api.openaq.org/v3/locations?coordinates=${lat},${lng}&radius=25000&limit=1&parameters_id=2`
             );
             
             if (!response.ok) throw new Error('OpenAQ API error');
             
             const data = await response.json();
-            return data.results[0] || { measurements: [{ value: null }] };
+            const location = data.results[0];
+            if (!location) return { value: null };
+            
+            // Get latest measurement for this location
+            const measurementResponse = await fetch(
+                `https://api.openaq.org/v3/locations/${location.id}/latest?parameters_id=2`
+            );
+            
+            if (!measurementResponse.ok) return { value: null };
+            
+            const measurementData = await measurementResponse.json();
+            return measurementData.results[0] || { value: null };
         }
 
         // Fetch elevation using Open-Elevation API
@@ -166,7 +177,7 @@
             score += greenScore;
             
             // Air quality factor (-20 to +20 points)
-            const pm25 = airData.measurements?.[0]?.value;
+            const pm25 = airData?.value;
             if (pm25 !== null && pm25 !== undefined) {
                 if (pm25 < 12) score += 20;      // WHO good
                 else if (pm25 < 35) score += 10; // WHO moderate
@@ -184,7 +195,7 @@
 
         // Display results in sidebar
         function displayResults(score, greenData, airData, elevationData, lat, lng) {
-            const pm25 = airData.measurements?.[0]?.value;
+            const pm25 = airData?.value;
             const elevation = elevationData?.elevation;
             
             document.getElementById('results').innerHTML = `
