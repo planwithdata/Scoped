@@ -457,9 +457,15 @@
                     console.warn('Business failed:', err.message);
                     return { total: 0, offices: 0, coworking: 0, industrial: 0, commercial: 0 };
                 });
+                
+                // Phase 4: Climate Resilience
+                const climateResilienceData = await fetchClimateResilience(lat, lng, elevationData, weatherData).catch(err => {
+                    console.warn('Climate resilience failed:', err.message);
+                    return { floodRisk: null, droughtRisk: null, heatIslandRisk: null };
+                });
 
                 // Calculate all scores
-                const scores = calculateAllScores(greenData, airData, elevationData, weatherData, climateData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, businessData);
+                const scores = calculateAllScores(greenData, airData, elevationData, weatherData, climateData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, businessData, climateResilienceData);
                 const score = scores.overall;
                 
                 console.log('Analysis complete. Score:', score);
@@ -484,14 +490,16 @@
                     healthcare: healthcareData?.total || 0,
                     noiseLevel: noiseData?.noiseLevel,
                     businesses: businessData?.total || 0,
-                    offices: businessData?.offices || 0
+                    offices: businessData?.offices || 0,
+                    floodRisk: climateResilienceData?.floodRisk,
+                    economicLevel: scores.economicLevel
                 };
                 previousClicks.unshift(clickData);
                 if (previousClicks.length > 10) previousClicks = previousClicks.slice(0, 10);
                 localStorage.setItem('scopedClicks', JSON.stringify(previousClicks));
                 
                 // Display comprehensive results with all scores
-                displayResults(scores, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, businessData, lat, lng);
+                displayResults(scores, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, businessData, climateResilienceData, lat, lng);
                 
                 // Add marker
                 clearMarkers();
@@ -515,7 +523,7 @@
         });
 
         // Display results function with all scores
-        function displayResults(scores, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, businessData, lat, lng) {
+        function displayResults(scores, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, businessData, climateResilienceData, lat, lng) {
             const scoreColor = getScoreColor(scores.overall);
             const scoreCategory = getScoreCategory(scores.overall);
             
@@ -566,6 +574,10 @@
                     <div class="score-row">
                         <span class="score-name">⚡ Energy & Climate</span>
                         <span class="score-value-small" style="color: ${getScoreColor(scores.energyClimate)};">${scores.energyClimate}/100</span>
+                    </div>
+                    <div class="score-row">
+                        <span class="score-name">🌊 Climate Resilience</span>
+                        <span class="score-value-small" style="color: ${getScoreColor(scores.climateResilience)};">${scores.climateResilience}/100</span>
                     </div>
                 </div>
                 
@@ -652,6 +664,12 @@
                             <div class="metric-value">${transportData?.total || 0}</div>
                             <div class="metric-subtitle">${transportData?.busStops || 0} bus • ${transportData?.stations || 0} rail</div>
                         </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-title">💰 Economic Level</div>
+                            <div class="metric-value">${scores.economicLevel || '--'}</div>
+                            <div class="metric-subtitle">Income proxy score</div>
+                        </div>
                     </div>
                 </div>
                 
@@ -681,6 +699,12 @@
                             <div class="metric-title">💼 Employment</div>
                             <div class="metric-value">${scores.employmentOpportunity || '--'}</div>
                             <div class="metric-subtitle">Job market score</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-title">🌊 Flood Risk</div>
+                            <div class="metric-value">${climateResilienceData?.floodRisk !== null ? climateResilienceData.floodRisk : '--'}</div>
+                            <div class="metric-subtitle">Climate resilience</div>
                         </div>
                         
                         ${servicesData?.atms ? `
@@ -1156,7 +1180,7 @@
             }
         }
         
-        function calculateAllScores(greenData, airData, elevationData, weatherData = {}, climateData = {}, noiseData = {}, biodiversityData = {}, healthcareData = {total: 0}, educationData = {total: 0}, transportData = {total: 0}, servicesData = {total: 0}, businessData = {total: 0}) {
+        function calculateAllScores(greenData, airData, elevationData, weatherData = {}, climateData = {}, noiseData = {}, biodiversityData = {}, healthcareData = {total: 0}, educationData = {total: 0}, transportData = {total: 0}, servicesData = {total: 0}, businessData = {total: 0}, climateResilienceData = {}) {
             console.log('Calculating all sustainability and neighborhood scores...');
             
             // === CATEGORY SCORES ===
@@ -1200,20 +1224,24 @@
             // Social Infrastructure Score (0-100)
             let socialScore = 0;
             const healthcare = healthcareData?.total || 0;
-            if (healthcare >= 10) socialScore += 42.86; // 15/35 * 100
-            else if (healthcare >= 7) socialScore += 34.29;
-            else if (healthcare >= 4) socialScore += 25.71;
-            else socialScore += healthcare * 5.71;
+            if (healthcare >= 10) socialScore += 37.14; // 13/35 * 100 (reduced from 15 to 13)
+            else if (healthcare >= 7) socialScore += 29.71;
+            else if (healthcare >= 4) socialScore += 22.29;
+            else socialScore += healthcare * 4.95;
             
             const education = educationData?.total || 0;
-            if (education >= 8) socialScore += 28.57; // 10/35 * 100
-            else if (education >= 5) socialScore += 22.86;
-            else socialScore += Math.min(17.14, education * 4.29);
+            if (education >= 8) socialScore += 25.71; // 9/35 * 100 (reduced from 10 to 9)
+            else if (education >= 5) socialScore += 20.57;
+            else socialScore += Math.min(15.43, education * 3.86);
             
             const transport = transportData?.total || 0;
-            if (transport >= 15) socialScore += 28.57; // 10/35 * 100
-            else if (transport >= 10) socialScore += 22.86;
-            else socialScore += Math.min(17.14, transport * 1.71);
+            if (transport >= 15) socialScore += 25.71; // 9/35 * 100 (reduced from 10 to 9)
+            else if (transport >= 10) socialScore += 20.57;
+            else socialScore += Math.min(15.43, transport * 1.54);
+            
+            // Economic Level Proxy (4/35 = 11.43% max) - new component
+            const economicLevelScore = calculateEconomicLevel(businessData, servicesData);
+            socialScore += economicLevelScore * 0.1143;
             
             // Economic Sustainability Score (0-100)
             let economicScore = 0;
@@ -1347,6 +1375,36 @@
             
             employmentScore = Math.min(100, employmentScore);
             
+            // Climate Resilience Score (0-100)
+            let climateResilienceScore = 0;
+            const floodRisk = climateResilienceData?.floodRisk;
+            const droughtRisk = climateResilienceData?.droughtRisk;
+            const heatIslandRisk = climateResilienceData?.heatIslandRisk;
+            
+            // Flood resilience (40%)
+            if (floodRisk !== null) {
+                if (floodRisk <= 20) climateResilienceScore += 40;
+                else if (floodRisk <= 40) climateResilienceScore += 30;
+                else if (floodRisk <= 60) climateResilienceScore += 20;
+                else climateResilienceScore += 10;
+            }
+            
+            // Drought resilience (30%)
+            if (droughtRisk !== null) {
+                if (droughtRisk <= 20) climateResilienceScore += 30;
+                else if (droughtRisk <= 40) climateResilienceScore += 22;
+                else if (droughtRisk <= 60) climateResilienceScore += 15;
+                else climateResilienceScore += 8;
+            }
+            
+            // Heat island resilience (30%)
+            if (heatIslandRisk !== null) {
+                if (heatIslandRisk <= 20) climateResilienceScore += 30;
+                else if (heatIslandRisk <= 40) climateResilienceScore += 22;
+                else if (heatIslandRisk <= 60) climateResilienceScore += 15;
+                else climateResilienceScore += 8;
+            }
+            
             const scores = {
                 overall: overallScore,
                 environmental: Math.round(envScore),
@@ -1357,11 +1415,77 @@
                 greenLiving: Math.round(greenLivingScore),
                 healthSafety: Math.round(healthSafetyScore),
                 energyClimate: Math.round(energyClimateScore),
-                employmentOpportunity: Math.round(employmentScore)
+                employmentOpportunity: Math.round(employmentScore),
+                climateResilience: Math.round(climateResilienceScore),
+                economicLevel: Math.round(calculateEconomicLevel(businessData, servicesData))
             };
             
             console.log('All scores calculated:', scores);
             return scores;
+        }
+        
+        function calculateEconomicLevel(businessData, servicesData) {
+            // Proxy for economic level based on business infrastructure
+            let economicScore = 0;
+            const offices = businessData?.offices || 0;
+            const banks = servicesData?.banks || 0;
+            const commercial = businessData?.commercial || 0;
+            
+            // High-end offices indicate higher income area (50%)
+            if (offices >= 8) economicScore += 50;
+            else if (offices >= 4) economicScore += 35;
+            else economicScore += offices * 6;
+            
+            // Banking infrastructure (30%)
+            if (banks >= 3) economicScore += 30;
+            else economicScore += banks * 10;
+            
+            // Commercial development (20%)
+            if (commercial >= 3) economicScore += 20;
+            else economicScore += commercial * 7;
+            
+            return Math.min(100, economicScore);
+        }
+        
+        async function fetchClimateResilience(lat, lng, elevationData, weatherData) {
+            try {
+                const elevation = elevationData?.elevation || 0;
+                const temperature = weatherData?.temperature || 25;
+                
+                // Flood Risk Assessment (0-100, lower is better)
+                let floodRisk = 50; // Base risk
+                if (elevation > 100) floodRisk -= 30;
+                else if (elevation > 50) floodRisk -= 15;
+                else if (elevation < 10) floodRisk += 20;
+                
+                // Drought Risk Assessment (0-100, lower is better)
+                let droughtRisk = 40; // Base risk
+                if (temperature > 35) droughtRisk += 25;
+                else if (temperature > 30) droughtRisk += 15;
+                else if (temperature < 20) droughtRisk -= 10;
+                
+                // Heat Island Risk (0-100, lower is better)
+                let heatIslandRisk = 45; // Base risk
+                if (temperature > 32) heatIslandRisk += 20;
+                else if (temperature > 28) heatIslandRisk += 10;
+                else if (temperature < 22) heatIslandRisk -= 15;
+                
+                // Adjust based on green spaces (cooling effect)
+                const greenSpaces = arguments[4]?.count || 0; // Access greenData if available
+                if (greenSpaces >= 10) {
+                    heatIslandRisk -= 15;
+                    droughtRisk -= 10;
+                }
+                
+                return {
+                    floodRisk: Math.max(0, Math.min(100, floodRisk)),
+                    droughtRisk: Math.max(0, Math.min(100, droughtRisk)),
+                    heatIslandRisk: Math.max(0, Math.min(100, heatIslandRisk))
+                };
+            } catch (error) {
+                console.error('Climate resilience calculation failed:', error.message);
+                return { floodRisk: null, droughtRisk: null, heatIslandRisk: null };
+            }
         }
     </script>
 </body>

@@ -170,6 +170,28 @@
             <div>Tests: Combined business infrastructure to calculate employment opportunities</div>
             <div id="employment-result"></div>
         </div>
+        
+        <!-- Economic Level Test -->
+        <div class="test-card">
+            <div class="test-header">
+                <div class="test-title">💰 Economic Level Proxy</div>
+                <button class="test-btn" onclick="testEconomicLevel()">Test</button>
+            </div>
+            <div>Tests: Income level proxy based on business and banking infrastructure</div>
+            <div id="economiclevel-result"></div>
+        </div>
+        
+        <h2>🌊 Phase 5 APIs - Climate Resilience</h2>
+        
+        <!-- Climate Resilience Test -->
+        <div class="test-card">
+            <div class="test-header">
+                <div class="test-title">🌊 Climate Resilience Assessment</div>
+                <button class="test-btn" onclick="testClimateResilience()">Test</button>
+            </div>
+            <div>Tests: Flood risk, drought risk, and heat island vulnerability</div>
+            <div id="climateresilience-result"></div>
+        </div>
     </div>
 
     <script>
@@ -833,6 +855,166 @@
                 showResult('employment-result', 'success', 'Employment opportunity calculation successful!', employmentData);
             } catch (error) {
                 showResult('employment-result', 'error', `Employment test failed: ${error.message}`);
+            }
+        }
+        
+        async function testEconomicLevel() {
+            const { lat, lng } = getCoords();
+            showResult('economiclevel-result', 'loading', 'Testing economic level proxy...');
+            
+            try {
+                // Get business and services data
+                const businessQuery = `
+                    [out:json][timeout:15];
+                    (
+                      node["office"](around:2000,${lat},${lng});
+                      way["building"="office"](around:2000,${lat},${lng});
+                      way["landuse"="commercial"](around:2000,${lat},${lng});
+                    );
+                    out;
+                `;
+                
+                const servicesQuery = `
+                    [out:json][timeout:15];
+                    (
+                      node["amenity"="bank"](around:1500,${lat},${lng});
+                    );
+                    out;
+                `;
+                
+                const [businessResponse, servicesResponse] = await Promise.all([
+                    fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: businessQuery }),
+                    fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: servicesQuery })
+                ]);
+                
+                if (!businessResponse.ok || !servicesResponse.ok) {
+                    throw new Error('API request failed');
+                }
+                
+                const [businessData, servicesData] = await Promise.all([
+                    businessResponse.json(),
+                    servicesResponse.json()
+                ]);
+                
+                const offices = businessData.elements.filter(el => el.tags?.office || el.tags?.building === 'office').length;
+                const commercial = businessData.elements.filter(el => el.tags?.landuse === 'commercial').length;
+                const banks = servicesData.elements.filter(el => el.tags?.amenity === 'bank').length;
+                
+                // Calculate economic level score
+                let economicScore = 0;
+                
+                // High-end offices (50%)
+                if (offices >= 8) economicScore += 50;
+                else if (offices >= 4) economicScore += 35;
+                else economicScore += offices * 6;
+                
+                // Banking infrastructure (30%)
+                if (banks >= 3) economicScore += 30;
+                else economicScore += banks * 10;
+                
+                // Commercial development (20%)
+                if (commercial >= 3) economicScore += 20;
+                else economicScore += commercial * 7;
+                
+                economicScore = Math.min(100, economicScore);
+                
+                const economicLevelData = {
+                    economicLevelScore: economicScore,
+                    economicCategory: economicScore >= 80 ? 'High Income Area' :
+                                    economicScore >= 60 ? 'Upper Middle Income' :
+                                    economicScore >= 40 ? 'Middle Income' :
+                                    economicScore >= 20 ? 'Lower Middle Income' : 'Low Income Area',
+                    indicators: {
+                        offices: { count: offices, contribution: Math.min(50, offices >= 8 ? 50 : offices >= 4 ? 35 : offices * 6) },
+                        banks: { count: banks, contribution: Math.min(30, banks >= 3 ? 30 : banks * 10) },
+                        commercial: { count: commercial, contribution: Math.min(20, commercial >= 3 ? 20 : commercial * 7) }
+                    },
+                    note: 'Economic level estimated from business infrastructure density'
+                };
+                
+                showResult('economiclevel-result', 'success', 'Economic level proxy calculation successful!', economicLevelData);
+            } catch (error) {
+                showResult('economiclevel-result', 'error', `Economic level test failed: ${error.message}`);
+            }
+        }
+        
+        async function testClimateResilience() {
+            const { lat, lng } = getCoords();
+            showResult('climateresilience-result', 'loading', 'Testing climate resilience assessment...');
+            
+            try {
+                // Get elevation data
+                const elevationResponse = await fetch(`https://api.open-elevation.com/api/v1/lookup?locations=${lat},${lng}`);
+                if (!elevationResponse.ok) throw new Error('Elevation API failed');
+                const elevationData = await elevationResponse.json();
+                const elevation = elevationData.results[0]?.elevation || 0;
+                
+                // Get weather data if API key available
+                let temperature = 25; // Default
+                try {
+                    const apiKey = API_CONFIG.OPENWEATHER_API_KEY;
+                    if (apiKey) {
+                        const weatherResponse = await fetch(`${API_CONFIG.ENDPOINTS.OPENWEATHER}/weather?lat=${lat}&lon=${lng}&appid=${apiKey}&units=metric`);
+                        if (weatherResponse.ok) {
+                            const weatherData = await weatherResponse.json();
+                            temperature = weatherData.main?.temp || 25;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Weather data unavailable for climate resilience');
+                }
+                
+                // Calculate climate resilience scores
+                
+                // Flood Risk (0-100, lower is better)
+                let floodRisk = 50;
+                if (elevation > 100) floodRisk -= 30;
+                else if (elevation > 50) floodRisk -= 15;
+                else if (elevation < 10) floodRisk += 20;
+                
+                // Drought Risk (0-100, lower is better)
+                let droughtRisk = 40;
+                if (temperature > 35) droughtRisk += 25;
+                else if (temperature > 30) droughtRisk += 15;
+                else if (temperature < 20) droughtRisk -= 10;
+                
+                // Heat Island Risk (0-100, lower is better)
+                let heatIslandRisk = 45;
+                if (temperature > 32) heatIslandRisk += 20;
+                else if (temperature > 28) heatIslandRisk += 10;
+                else if (temperature < 22) heatIslandRisk -= 15;
+                
+                // Normalize scores
+                floodRisk = Math.max(0, Math.min(100, floodRisk));
+                droughtRisk = Math.max(0, Math.min(100, droughtRisk));
+                heatIslandRisk = Math.max(0, Math.min(100, heatIslandRisk));
+                
+                // Calculate overall resilience (inverse of average risk)
+                const avgRisk = (floodRisk + droughtRisk + heatIslandRisk) / 3;
+                const resilienceScore = Math.round(100 - avgRisk);
+                
+                const climateData = {
+                    overallResilienceScore: resilienceScore,
+                    resilienceCategory: resilienceScore >= 80 ? 'Highly Resilient' :
+                                      resilienceScore >= 60 ? 'Moderately Resilient' :
+                                      resilienceScore >= 40 ? 'Somewhat Vulnerable' :
+                                      resilienceScore >= 20 ? 'Vulnerable' : 'Highly Vulnerable',
+                    riskAssessment: {
+                        floodRisk: { score: floodRisk, level: floodRisk <= 30 ? 'Low' : floodRisk <= 60 ? 'Moderate' : 'High' },
+                        droughtRisk: { score: droughtRisk, level: droughtRisk <= 30 ? 'Low' : droughtRisk <= 60 ? 'Moderate' : 'High' },
+                        heatIslandRisk: { score: heatIslandRisk, level: heatIslandRisk <= 30 ? 'Low' : heatIslandRisk <= 60 ? 'Moderate' : 'High' }
+                    },
+                    inputData: {
+                        elevation: elevation + 'm',
+                        temperature: temperature + '°C',
+                        location: `${lat}, ${lng}`
+                    },
+                    note: 'Climate resilience based on elevation, temperature, and geographic factors'
+                };
+                
+                showResult('climateresilience-result', 'success', 'Climate resilience assessment successful!', climateData);
+            } catch (error) {
+                showResult('climateresilience-result', 'error', `Climate resilience test failed: ${error.message}`);
             }
         }
     </script>

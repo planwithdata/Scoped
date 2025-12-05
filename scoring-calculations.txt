@@ -1,0 +1,338 @@
+# Scoped - Complete Scoring Calculations & Explanations
+
+## OVERVIEW
+Scoped calculates 12 different scores:
+- 3 Category Scores (Environmental, Social, Economic)
+- 1 Overall Sustainability Score
+- 8 Neighborhood Insight Scores
+
+## CATEGORY SCORES (0-100 each)
+
+### 1. ENVIRONMENTAL HEALTH SCORE (40% of Overall)
+Components:
+- Air Quality (15/40 = 37.5% max)
+- Green Spaces (12/40 = 30% max)  
+- Water Bodies (3/40 = 7.5% max)
+- Temperature Comfort (5/40 = 12.5% max)
+- Noise Level (3/40 = 7.5% max)
+- Biodiversity (2/40 = 5% max)
+
+Calculation:
+```
+envScore = 0
+if AQI <= 50: envScore += 37.5
+elif AQI <= 100: envScore += 30
+elif AQI <= 150: envScore += 20
+elif AQI <= 200: envScore += 10
+
+if greenSpaces >= 15: envScore += 30
+elif greenSpaces >= 10: envScore += 25
+elif greenSpaces >= 5: envScore += 17.5
+else: envScore += greenSpaces * 5
+
+envScore += min(7.5, waterBodies * 2.5)
+
+if temp 18-26°C: envScore += 12.5
+elif temp 15-30°C: envScore += 7.5
+elif temp 10-35°C: envScore += 2.5
+
+if noise <= 20: envScore += 7.5
+elif noise <= 40: envScore += 5
+elif noise <= 60: envScore += 2.5
+
+if biodiversity >= 3: envScore += 5
+elif biodiversity >= 2: envScore += 3.75
+elif biodiversity >= 1: envScore += 2.5
+```
+
+### 2. SOCIAL INFRASTRUCTURE SCORE (35% of Overall)
+Components:
+- Healthcare Access (13/35 = 37.14% max)
+- Education Access (9/35 = 25.71% max)
+- Public Transport (9/35 = 25.71% max)
+- Economic Level Proxy (4/35 = 11.43% max)
+
+Calculation:
+```
+socialScore = 0
+if healthcare >= 10: socialScore += 37.14
+elif healthcare >= 7: socialScore += 29.71
+elif healthcare >= 4: socialScore += 22.29
+else: socialScore += healthcare * 4.95
+
+if education >= 8: socialScore += 25.71
+elif education >= 5: socialScore += 20.57
+else: socialScore += min(15.43, education * 3.86)
+
+if transport >= 15: socialScore += 25.71
+elif transport >= 10: socialScore += 20.57
+else: socialScore += min(15.43, transport * 1.54)
+
+economicLevelScore = calculateEconomicLevel(businessData, servicesData)
+socialScore += economicLevelScore * 0.1143
+```
+
+### 3. ECONOMIC SUSTAINABILITY SCORE (25% of Overall)
+Components:
+- Essential Services (10/25 = 40% max)
+- Business Infrastructure (5/25 = 20% max)
+- Solar Energy Potential (10/25 = 40% max)
+
+Calculation:
+```
+economicScore = 0
+if services >= 20: economicScore += 40
+elif services >= 15: economicScore += 32
+else: economicScore += min(24, services * 1.6)
+
+if businesses >= 15: economicScore += 20
+elif businesses >= 10: economicScore += 16
+else: economicScore += min(12, businesses * 1.2)
+
+if solar >= 6: economicScore += 40
+elif solar >= 4.5: economicScore += 32
+elif solar >= 3: economicScore += 24
+elif solar >= 2: economicScore += 16
+```
+
+## OVERALL SUSTAINABILITY SCORE (0-100)
+```
+overallScore = (envScore * 0.4) + (socialScore * 0.35) + (economicScore * 0.25)
+```
+
+## NEIGHBORHOOD INSIGHT SCORES (0-100 each)
+
+### 4. AIR QUALITY INDEX SCORE
+Direct conversion from AQI:
+```
+if AQI <= 50: score = 100
+elif AQI <= 100: score = 80
+elif AQI <= 150: score = 60
+elif AQI <= 200: score = 40
+elif AQI <= 300: score = 20
+else: score = 0
+```
+
+### 5. TRAFFIC & ACCESSIBILITY SCORE
+Base score 50, adjusted by:
+```
+trafficScore = 50
+// Road density (negative impact)
+if roadDensity <= 2: trafficScore += 25
+elif roadDensity <= 5: trafficScore += 15
+elif roadDensity <= 10: trafficScore += 5
+else: trafficScore -= min(25, (roadDensity - 10) * 2)
+
+// Transport access (positive impact)
+if transport >= 10: trafficScore += 25
+elif transport >= 5: trafficScore += 15
+else: trafficScore += transport * 2
+
+trafficScore = max(0, min(100, trafficScore))
+```
+
+### 6. GREEN LIVING INDEX SCORE
+Components weighted:
+```
+greenLivingScore = 0
+// Green spaces (40%)
+if greenSpaces >= 15: greenLivingScore += 40
+elif greenSpaces >= 10: greenLivingScore += 30
+elif greenSpaces >= 5: greenLivingScore += 20
+else: greenLivingScore += greenSpaces * 3
+
+// Water bodies (30%)
+if waterBodies >= 3: greenLivingScore += 30
+else: greenLivingScore += waterBodies * 10
+
+// Biodiversity (30%)
+if biodiversity >= 3: greenLivingScore += 30
+elif biodiversity >= 2: greenLivingScore += 20
+else: greenLivingScore += biodiversity * 10
+```
+
+### 7. HEALTH & SAFETY SCORE
+Components weighted:
+```
+healthSafetyScore = 0
+// Healthcare access (50%)
+if healthcare >= 10: healthSafetyScore += 50
+elif healthcare >= 5: healthSafetyScore += 35
+else: healthSafetyScore += healthcare * 5
+
+// Air quality (30%)
+healthSafetyScore += airQualityScore * 0.3
+
+// Safety services - police (20%)
+if police >= 2: healthSafetyScore += 20
+else: healthSafetyScore += police * 10
+
+healthSafetyScore = min(100, healthSafetyScore)
+```
+
+### 8. ENERGY & CLIMATE SCORE
+Components weighted:
+```
+energyClimateScore = 0
+// Solar potential (40%)
+if solar >= 6: energyClimateScore += 40
+elif solar >= 4: energyClimateScore += 30
+elif solar >= 2: energyClimateScore += 20
+else: energyClimateScore += solar * 5
+
+// Climate comfort (40%)
+if temp 18-26°C: energyClimateScore += 40
+elif temp 15-30°C: energyClimateScore += 25
+elif temp 10-35°C: energyClimateScore += 15
+
+// Elevation benefit (20%)
+if elevation > 1000m: energyClimateScore += 20
+elif elevation > 500m: energyClimateScore += 15
+elif elevation > 100m: energyClimateScore += 10
+elif elevation > 0m: energyClimateScore += 5
+```
+
+### 9. EMPLOYMENT OPPORTUNITY SCORE
+Components weighted:
+```
+employmentScore = 0
+// Office buildings (40%)
+if offices >= 10: employmentScore += 40
+elif offices >= 5: employmentScore += 30
+else: employmentScore += offices * 4
+
+// Commercial areas (30%)
+if commercial >= 5: employmentScore += 30
+else: employmentScore += commercial * 6
+
+// Coworking spaces (20%)
+if coworking >= 3: employmentScore += 20
+else: employmentScore += coworking * 7
+
+// Industrial areas (10%)
+if industrial >= 2: employmentScore += 10
+else: employmentScore += industrial * 5
+
+employmentScore = min(100, employmentScore)
+```
+
+### 10. ECONOMIC LEVEL SCORE (Social Component)
+Components weighted:
+```
+economicScore = 0
+// High-end offices (50%)
+if offices >= 8: economicScore += 50
+elif offices >= 4: economicScore += 35
+else: economicScore += offices * 6
+
+// Banking infrastructure (30%)
+if banks >= 3: economicScore += 30
+else: economicScore += banks * 10
+
+// Commercial development (20%)
+if commercial >= 3: economicScore += 20
+else: economicScore += commercial * 7
+
+economicScore = min(100, economicScore)
+```
+
+### 11. CLIMATE RESILIENCE SCORE
+Components weighted:
+```
+climateResilienceScore = 0
+// Flood resilience (40%)
+if floodRisk <= 20: climateResilienceScore += 40
+elif floodRisk <= 40: climateResilienceScore += 30
+elif floodRisk <= 60: climateResilienceScore += 20
+else: climateResilienceScore += 10
+
+// Drought resilience (30%)
+if droughtRisk <= 20: climateResilienceScore += 30
+elif droughtRisk <= 40: climateResilienceScore += 22
+elif droughtRisk <= 60: climateResilienceScore += 15
+else: climateResilienceScore += 8
+
+// Heat island resilience (30%)
+if heatIslandRisk <= 20: climateResilienceScore += 30
+elif heatIslandRisk <= 40: climateResilienceScore += 22
+elif heatIslandRisk <= 60: climateResilienceScore += 15
+else: climateResilienceScore += 8
+```
+
+## CLIMATE RISK CALCULATIONS
+
+### Flood Risk Assessment (0-100, lower is better)
+```
+floodRisk = 50  // Base risk
+if elevation > 100m: floodRisk -= 30
+elif elevation > 50m: floodRisk -= 15
+elif elevation < 10m: floodRisk += 20
+```
+
+### Drought Risk Assessment (0-100, lower is better)
+```
+droughtRisk = 40  // Base risk
+if temperature > 35°C: droughtRisk += 25
+elif temperature > 30°C: droughtRisk += 15
+elif temperature < 20°C: droughtRisk -= 10
+```
+
+### Heat Island Risk (0-100, lower is better)
+```
+heatIslandRisk = 45  // Base risk
+if temperature > 32°C: heatIslandRisk += 20
+elif temperature > 28°C: heatIslandRisk += 10
+elif temperature < 22°C: heatIslandRisk -= 15
+
+// Green space cooling effect
+if greenSpaces >= 10:
+    heatIslandRisk -= 15
+    droughtRisk -= 10
+```
+
+## SCORE CATEGORIES
+All scores use same thresholds:
+- 80-100: Excellent
+- 60-79: Good  
+- 40-59: Fair
+- 20-39: Poor
+- 0-19: Critical
+
+## DATA SOURCES & SEARCH RADII
+- Green Spaces: OSM within 1km
+- Healthcare: OSM within 2km
+- Education: OSM within 2km
+- Transport: OSM within 1.5km
+- Services: OSM within 1.5km
+- Business: OSM within 2km
+- Air Quality: OpenWeatherMap real-time
+- Weather: OpenWeatherMap current
+- Solar: NASA POWER historical
+- Elevation: Open-Elevation API
+- Noise: OSM roads within 500m
+- Biodiversity: OSM protected areas within 5km
+
+## RESEARCH BASIS
+- WHO air quality guidelines (PM2.5 thresholds)
+- UN SDG indicators for sustainability
+- 15-minute city accessibility principles
+- WHO healthcare accessibility standards
+- Urban planning best practices for green space access
+- Climate comfort research (18-26°C optimal)
+- Transit-oriented development principles (400m walking distance)
+- IPCC climate resilience frameworks
+- Urban heat island research (Santamouris, 2014)
+- Flood risk assessment methodologies
+- Economic geography principles for income proxies
+
+## SCORING PHILOSOPHY
+1. Environmental health weighted highest (40%) due to direct health impacts
+2. Social infrastructure (35%) for quality of life and equity
+3. Economic sustainability (25%) for long-term viability
+4. Neighborhood insights provide practical, actionable information
+5. Research-based thresholds ensure scientific validity
+6. Graceful degradation when APIs fail (fallback values)
+7. All scores normalized to 0-100 for consistency
+8. Climate resilience addresses future sustainability challenges
+9. Economic level proxy improves social equity assessment
+10. Risk-based scoring for climate adaptation planning
