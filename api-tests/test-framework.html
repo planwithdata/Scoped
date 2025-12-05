@@ -126,6 +126,28 @@
             <div>Tests: Historical air pollution data (last 7 days)</div>
             <div id="airhistory-result"></div>
         </div>
+        
+        <h2>🌱 Phase 3 APIs - Environmental Monitoring</h2>
+        
+        <!-- Noise Pollution Test -->
+        <div class="test-card">
+            <div class="test-header">
+                <div class="test-title">🔊 Noise Pollution Proxy</div>
+                <button class="test-btn" onclick="testNoisePollution()">Test</button>
+            </div>
+            <div>Tests: Road density and traffic noise estimation via OSM</div>
+            <div id="noise-result"></div>
+        </div>
+        
+        <!-- Biodiversity Test -->
+        <div class="test-card">
+            <div class="test-header">
+                <div class="test-title">🌿 Biodiversity Indicators</div>
+                <button class="test-btn" onclick="testBiodiversity()">Test</button>
+            </div>
+            <div>Tests: Protected areas and natural spaces within 5km</div>
+            <div id="biodiversity-result"></div>
+        </div>
     </div>
 
     <script>
@@ -521,6 +543,128 @@
                 showResult('airhistory-result', 'success', 'Air Pollution History API test successful!', historyData);
             } catch (error) {
                 showResult('airhistory-result', 'error', `Air Pollution History API test failed: ${error.message}`);
+            }
+        }
+        
+        async function testNoisePollution() {
+            const { lat, lng } = getCoords();
+            showResult('noise-result', 'loading', 'Testing noise pollution proxy...');
+            
+            try {
+                const radius = 500;
+                const query = `
+                    [out:json][timeout:15];
+                    (
+                      way["highway"~"^(motorway|trunk|primary|secondary|tertiary)$"](around:${radius},${lat},${lng});
+                      way["railway"="rail"](around:${radius},${lat},${lng});
+                      node["aeroway"="aerodrome"](around:5000,${lat},${lng});
+                    );
+                    out;
+                `;
+                
+                const response = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    body: query
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                const roads = data.elements.filter(el => el.tags?.highway);
+                const railways = data.elements.filter(el => el.tags?.railway);
+                const airports = data.elements.filter(el => el.tags?.aeroway);
+                
+                // Calculate noise score
+                let noiseScore = 0;
+                roads.forEach(road => {
+                    const roadType = road.tags.highway;
+                    if (['motorway', 'trunk'].includes(roadType)) noiseScore += 10;
+                    else if (['primary', 'secondary'].includes(roadType)) noiseScore += 5;
+                    else if (roadType === 'tertiary') noiseScore += 2;
+                });
+                noiseScore += railways.length * 8 + airports.length * 20;
+                
+                const roadBreakdown = {
+                    motorways: roads.filter(r => ['motorway', 'trunk'].includes(r.tags.highway)).length,
+                    major: roads.filter(r => ['primary', 'secondary'].includes(r.tags.highway)).length,
+                    minor: roads.filter(r => r.tags.highway === 'tertiary').length
+                };
+                
+                const noiseData = {
+                    estimatedNoiseLevel: Math.min(noiseScore, 100),
+                    noiseCategory: noiseScore <= 20 ? 'Quiet' : noiseScore <= 40 ? 'Moderate' : noiseScore <= 60 ? 'Noisy' : 'Very Noisy',
+                    roadBreakdown,
+                    railways: railways.length,
+                    airports: airports.length,
+                    totalNoiseSources: roads.length + railways.length + airports.length,
+                    note: 'Noise estimation based on traffic infrastructure density'
+                };
+                
+                showResult('noise-result', 'success', 'Noise pollution proxy test successful!', noiseData);
+            } catch (error) {
+                showResult('noise-result', 'error', `Noise pollution test failed: ${error.message}`);
+            }
+        }
+        
+        async function testBiodiversity() {
+            const { lat, lng } = getCoords();
+            showResult('biodiversity-result', 'loading', 'Testing biodiversity indicators...');
+            
+            try {
+                const radius = 5000;
+                const query = `
+                    [out:json][timeout:15];
+                    (
+                      way["leisure"="nature_reserve"](around:${radius},${lat},${lng});
+                      way["boundary"="protected_area"](around:${radius},${lat},${lng});
+                      way["boundary"="national_park"](around:${radius},${lat},${lng});
+                      way["natural"="wetland"](around:${radius},${lat},${lng});
+                      way["landuse"="forest"](around:${radius},${lat},${lng});
+                      relation["leisure"="nature_reserve"](around:${radius},${lat},${lng});
+                      relation["boundary"="protected_area"](around:${radius},${lat},${lng});
+                    );
+                    out;
+                `;
+                
+                const response = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    body: query
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                const protectedAreas = data.elements.filter(el => 
+                    ['nature_reserve', 'protected_area', 'national_park'].includes(
+                        el.tags?.leisure || el.tags?.boundary
+                    )
+                );
+                
+                const naturalAreas = data.elements.filter(el => 
+                    ['wetland', 'forest'].includes(el.tags?.natural || el.tags?.landuse)
+                );
+                
+                const biodiversityData = {
+                    protectedAreas: protectedAreas.length,
+                    naturalAreas: naturalAreas.length,
+                    totalBiodiversityFeatures: data.elements.length,
+                    biodiversityScore: protectedAreas.length + naturalAreas.length >= 3 ? 'High' : 
+                                     protectedAreas.length + naturalAreas.length >= 1 ? 'Moderate' : 'Low',
+                    protectedTypes: [...new Set(protectedAreas.map(el => el.tags?.leisure || el.tags?.boundary))],
+                    naturalTypes: [...new Set(naturalAreas.map(el => el.tags?.natural || el.tags?.landuse))],
+                    searchRadius: '5km',
+                    note: 'Biodiversity based on protected areas and natural spaces'
+                };
+                
+                showResult('biodiversity-result', 'success', 'Biodiversity indicators test successful!', biodiversityData);
+            } catch (error) {
+                showResult('biodiversity-result', 'error', `Biodiversity test failed: ${error.message}`);
             }
         }
     </script>

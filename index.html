@@ -239,7 +239,7 @@
                 // Fetch data with error handling and rate limiting
                 console.log('🚀 Starting comprehensive analysis...');
                 
-                const [greenData, airData, elevationData, weatherData, climateData] = await Promise.all([
+                const [greenData, airData, elevationData, weatherData, climateData, noiseData, biodiversityData] = await Promise.all([
                     fetchGreenSpaces(lat, lng).catch(err => {
                         console.error('❌ Green spaces failed:', err.message);
                         return { count: 0, types: [] };
@@ -259,6 +259,14 @@
                     fetchClimateData(lat, lng).catch(err => {
                         console.error('❌ Climate data failed:', err.message);
                         return { solarRadiation: null, climateComfort: null };
+                    }),
+                    fetchNoisePollution(lat, lng).catch(err => {
+                        console.error('❌ Noise data failed:', err.message);
+                        return { noiseLevel: null, roadDensity: 0 };
+                    }),
+                    fetchBiodiversity(lat, lng).catch(err => {
+                        console.error('❌ Biodiversity data failed:', err.message);
+                        return { protectedAreas: 0, naturalAreas: 0 };
                     })
                 ]);
                 
@@ -292,9 +300,9 @@
                 });
 
                 // Calculate sustainability score (0-100)
-                const score = calculateSustainabilityScore(greenData, airData, elevationData, weatherData, climateData, healthcareData, educationData, transportData, servicesData);
+                const score = calculateSustainabilityScore(greenData, airData, elevationData, weatherData, climateData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData);
                 
-                // Save to previous clicks
+                // Save to previous clicks (limit to 10)
                 const clickData = {
                     lat: lat.toFixed(4),
                     lng: lng.toFixed(4),
@@ -306,17 +314,19 @@
                     temperature: weatherData?.temperature,
                     humidity: weatherData?.humidity,
                     solarRadiation: climateData?.solarRadiation,
+                    noiseLevel: noiseData?.noiseLevel,
+                    biodiversityScore: biodiversityData?.protectedAreas,
                     healthcare: healthcareData?.total || 0,
                     education: educationData?.total || 0,
                     transport: transportData?.total || 0,
                     services: servicesData?.total || 0
                 };
                 previousClicks.unshift(clickData);
-                if (previousClicks.length > 50) previousClicks = previousClicks.slice(0, 50);
+                if (previousClicks.length > 10) previousClicks = previousClicks.slice(0, 10);
                 localStorage.setItem('scopedClicks', JSON.stringify(previousClicks));
                 
                 // Display results
-                displayResults(score, greenData, airData, elevationData, weatherData, climateData, healthcareData, educationData, transportData, servicesData, lat, lng);
+                displayResults(score, greenData, airData, elevationData, weatherData, climateData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, lat, lng);
                 updatePreviousClicksList();
                 
                 // Add popup on map
@@ -639,6 +649,127 @@
             }
         }
         
+        // Fetch noise pollution proxy using road density analysis
+        async function fetchNoisePollution(lat, lng) {
+            console.log('🔊 Fetching noise pollution data for:', lat, lng);
+            
+            try {
+                const radius = 500; // 500m radius for noise analysis
+                const query = `
+                    [out:json][timeout:15];
+                    (
+                      way["highway"~"^(motorway|trunk|primary|secondary)$"](around:${radius},${lat},${lng});
+                      way["highway"="tertiary"](around:${radius},${lat},${lng});
+                      way["railway"="rail"](around:${radius},${lat},${lng});
+                      node["aeroway"="aerodrome"](around:5000,${lat},${lng});
+                    );
+                    out;
+                `;
+                
+                const response = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    body: query
+                });
+                
+                console.log('📊 Noise pollution response status:', response.status);
+                
+                if (!response.ok) throw new Error('Noise pollution API error');
+                
+                const data = await response.json();
+                console.log('✅ Noise sources found:', data.elements.length);
+                
+                // Calculate noise level based on road types and proximity
+                let noiseScore = 0;
+                const roads = data.elements.filter(el => el.tags?.highway);
+                const railways = data.elements.filter(el => el.tags?.railway);
+                const airports = data.elements.filter(el => el.tags?.aeroway);
+                
+                // Road noise scoring (higher traffic = more noise)
+                roads.forEach(road => {
+                    const roadType = road.tags.highway;
+                    if (['motorway', 'trunk'].includes(roadType)) noiseScore += 10;
+                    else if (['primary', 'secondary'].includes(roadType)) noiseScore += 5;
+                    else if (roadType === 'tertiary') noiseScore += 2;
+                });
+                
+                // Railway and airport noise
+                noiseScore += railways.length * 8;
+                noiseScore += airports.length * 20;
+                
+                // Convert to noise level (0-100, lower is better)
+                const noiseLevel = Math.min(noiseScore, 100);
+                
+                console.log('🎯 Estimated noise level:', noiseLevel);
+                
+                return {
+                    noiseLevel,
+                    roadDensity: roads.length,
+                    railwayCount: railways.length,
+                    airportCount: airports.length
+                };
+                
+            } catch (error) {
+                console.error('💥 Noise pollution fetch error:', error.message);
+                return { noiseLevel: null, roadDensity: 0 };
+            }
+        }
+        
+        // Fetch biodiversity indicators using protected areas
+        async function fetchBiodiversity(lat, lng) {
+            console.log('🌿 Fetching biodiversity data for:', lat, lng);
+            
+            try {
+                const radius = 5000; // 5km radius for biodiversity analysis
+                const query = `
+                    [out:json][timeout:15];
+                    (
+                      way["leisure"="nature_reserve"](around:${radius},${lat},${lng});
+                      way["boundary"="protected_area"](around:${radius},${lat},${lng});
+                      way["boundary"="national_park"](around:${radius},${lat},${lng});
+                      way["natural"="wetland"](around:${radius},${lat},${lng});
+                      way["landuse"="forest"](around:${radius},${lat},${lng});
+                      relation["leisure"="nature_reserve"](around:${radius},${lat},${lng});
+                      relation["boundary"="protected_area"](around:${radius},${lat},${lng});
+                    );
+                    out;
+                `;
+                
+                const response = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    body: query
+                });
+                
+                console.log('📊 Biodiversity response status:', response.status);
+                
+                if (!response.ok) throw new Error('Biodiversity API error');
+                
+                const data = await response.json();
+                console.log('✅ Biodiversity features found:', data.elements.length);
+                
+                const protectedAreas = data.elements.filter(el => 
+                    ['nature_reserve', 'protected_area', 'national_park'].includes(
+                        el.tags?.leisure || el.tags?.boundary
+                    )
+                ).length;
+                
+                const naturalAreas = data.elements.filter(el => 
+                    ['wetland', 'forest'].includes(el.tags?.natural || el.tags?.landuse)
+                ).length;
+                
+                console.log('🎯 Biodiversity breakdown:', { protectedAreas, naturalAreas });
+                
+                return {
+                    protectedAreas,
+                    naturalAreas,
+                    totalBiodiversityFeatures: data.elements.length
+                };
+                
+            } catch (error) {
+                console.error('💥 Biodiversity fetch error:', error.message);
+                return { protectedAreas: 0, naturalAreas: 0 };
+            }
+        }
+        
         // Fetch climate data using NASA POWER API
         async function fetchClimateData(lat, lng) {
             console.log('☀️ Fetching climate data for:', lat, lng);
@@ -736,7 +867,7 @@
         }
 
         // Calculate sustainability score using research-based framework (0-100)
-        function calculateSustainabilityScore(greenData, airData, elevationData, weatherData = {}, climateData = {}, healthcareData = {total: 0}, educationData = {total: 0}, transportData = {total: 0}, servicesData = {total: 0}) {
+        function calculateSustainabilityScore(greenData, airData, elevationData, weatherData = {}, climateData = {}, noiseData = {}, biodiversityData = {}, healthcareData = {total: 0}, educationData = {total: 0}, transportData = {total: 0}, servicesData = {total: 0}) {
             console.log('🔬 Starting research-based sustainability calculation...');
             
             let totalScore = 0;
@@ -778,6 +909,33 @@
             
             totalScore += waterScore;
             console.log(`💧 Water Bodies: ${waterScore.toFixed(1)}/3 (${waterCount} water features/km²)`);
+            
+            // Noise Pollution Score (3% weight) - Lower noise = higher score
+            let noiseScore = 0;
+            const noiseLevel = noiseData?.noiseLevel;
+            if (noiseLevel !== null && noiseLevel !== undefined) {
+                if (noiseLevel <= 20) noiseScore = 3;      // Very quiet
+                else if (noiseLevel <= 40) noiseScore = 2; // Quiet
+                else if (noiseLevel <= 60) noiseScore = 1; // Moderate noise
+                else noiseScore = 0;                       // High noise
+            }
+            
+            totalScore += noiseScore;
+            console.log(`🔊 Noise Pollution: ${noiseScore.toFixed(1)}/3 (noise level: ${noiseLevel})`);
+            
+            // Biodiversity Score (2% weight) - Protected areas and natural spaces
+            let biodiversityScore = 0;
+            const protectedAreas = biodiversityData?.protectedAreas || 0;
+            const naturalAreas = biodiversityData?.naturalAreas || 0;
+            const totalBioFeatures = protectedAreas + naturalAreas;
+            
+            if (totalBioFeatures >= 3) biodiversityScore = 2;      // Excellent biodiversity
+            else if (totalBioFeatures >= 2) biodiversityScore = 1.5; // Good
+            else if (totalBioFeatures >= 1) biodiversityScore = 1;   // Moderate
+            else biodiversityScore = 0;                              // Poor
+            
+            totalScore += biodiversityScore;
+            console.log(`🌿 Biodiversity: ${biodiversityScore.toFixed(1)}/2 (${totalBioFeatures} protected/natural areas)`);
             
             // Climate Comfort (10% weight) - Heat stress research
             let climateScore = 0;
@@ -953,16 +1111,41 @@
                 return;
             }
             
-            listDiv.innerHTML = previousClicks.slice(0, 10).map(click => 
-                `<div class="click-item" onclick="flyToLocation(${click.lat}, ${click.lng})">
-                    <strong>Score: ${click.score}/100</strong><br>
+            listDiv.innerHTML = previousClicks.map((click, index) => {
+                const scoreColor = getScoreColor(click.score);
+                const scoreCategory = getScoreCategory(click.score);
+                return `<div class="click-item" onclick="flyToLocation(${click.lat}, ${click.lng})" style="border-left: 4px solid ${scoreColor};">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <strong style="color: ${scoreColor};">Score: ${click.score}/100</strong>
+                        <small style="opacity: 0.7;">${scoreCategory}</small>
+                    </div>
                     <small>${click.lat}, ${click.lng} • ${click.timestamp}</small>
-                </div>`
-            ).join('');
+                </div>`;
+            }).join('');
         }
         
         function flyToLocation(lat, lng) {
             map.flyTo({ center: [lng, lat], zoom: 12 });
+        }
+        
+        function getScoreColor(score) {
+            if (score >= 80) return '#4CAF50';      // Green - Excellent
+            else if (score >= 70) return '#8BC34A'; // Light Green - Very Good
+            else if (score >= 60) return '#CDDC39'; // Lime - Good
+            else if (score >= 50) return '#FFC107'; // Amber - Moderate
+            else if (score >= 40) return '#FF9800'; // Orange - Poor
+            else if (score >= 30) return '#FF5722'; // Deep Orange - Very Poor
+            else return '#F44336';                  // Red - Critical
+        }
+        
+        function getScoreCategory(score) {
+            if (score >= 80) return 'Excellent';
+            else if (score >= 70) return 'Very Good';
+            else if (score >= 60) return 'Good';
+            else if (score >= 50) return 'Moderate';
+            else if (score >= 40) return 'Poor';
+            else if (score >= 30) return 'Very Poor';
+            else return 'Critical';
         }
         
         function showPreviousClicksOnMap() {
@@ -971,39 +1154,59 @@
             previousClicks.forEach((click, index) => {
                 const lat = parseFloat(click.lat);
                 const lng = parseFloat(click.lng);
+                const scoreColor = getScoreColor(click.score);
+                const scoreCategory = getScoreCategory(click.score);
                 
-                // Create marker element
+                // Create marker element with score-based color
                 const markerEl = document.createElement('div');
                 markerEl.className = 'previous-click-marker';
                 markerEl.style.cssText = `
-                    width: 25px;
-                    height: 25px;
+                    width: 28px;
+                    height: 28px;
                     border-radius: 50%;
-                    background: ${click.score > 70 ? '#4CAF50' : click.score > 40 ? '#FF9800' : '#F44336'};
-                    border: 2px solid white;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                    background: ${scoreColor};
+                    border: 3px solid white;
+                    box-shadow: 0 3px 6px rgba(0,0,0,0.4);
                     cursor: pointer;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     color: white;
-                    font-size: 10px;
+                    font-size: 11px;
                     font-weight: bold;
+                    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+                    transition: transform 0.2s ease;
                 `;
                 markerEl.textContent = click.score;
+                
+                // Add hover effect
+                markerEl.addEventListener('mouseenter', () => {
+                    markerEl.style.transform = 'scale(1.2)';
+                });
+                markerEl.addEventListener('mouseleave', () => {
+                    markerEl.style.transform = 'scale(1)';
+                });
                 
                 // Create marker
                 const marker = new maplibregl.Marker(markerEl)
                     .setLngLat([lng, lat])
                     .addTo(map);
                 
-                // Add popup
-                const popup = new maplibregl.Popup({ offset: 25 })
+                // Enhanced popup with more details
+                const popup = new maplibregl.Popup({ offset: 30 })
                     .setHTML(`
-                        <div style="text-align: center;">
-                            <strong>Score: ${click.score}/100</strong><br>
-                            <small>${click.lat}, ${click.lng}</small><br>
-                            <small>${click.timestamp}</small>
+                        <div style="text-align: center; min-width: 150px;">
+                            <div style="background: ${scoreColor}; color: white; padding: 5px; border-radius: 4px; margin-bottom: 8px;">
+                                <strong>${click.score}/100 - ${scoreCategory}</strong>
+                            </div>
+                            <div style="font-size: 12px; color: #666;">
+                                <div><strong>Location:</strong> ${click.lat}, ${click.lng}</div>
+                                <div><strong>Analyzed:</strong> ${click.timestamp}</div>
+                                <div style="margin-top: 5px; font-size: 11px;">
+                                    Green: ${click.greenCount} | AQI: ${click.aqi || 'N/A'}<br>
+                                    Healthcare: ${click.healthcare} | Transport: ${click.transport}
+                                </div>
+                            </div>
                         </div>
                     `);
                 
@@ -1025,12 +1228,14 @@
         }
         
         // Display results in sidebar
-        function displayResults(score, greenData, airData, elevationData, weatherData = {}, climateData = {}, healthcareData = {}, educationData = {}, transportData = {}, servicesData = {}, lat, lng) {
+        function displayResults(score, greenData, airData, elevationData, weatherData = {}, climateData = {}, noiseData = {}, biodiversityData = {}, healthcareData = {}, educationData = {}, transportData = {}, servicesData = {}, lat, lng) {
             const aqi = airData?.value;
             const elevation = elevationData?.elevation;
             const temperature = weatherData?.temperature;
             const humidity = weatherData?.humidity;
             const solarRadiation = climateData?.solarRadiation;
+            const noiseLevel = noiseData?.noiseLevel;
+            const biodiversityFeatures = (biodiversityData?.protectedAreas || 0) + (biodiversityData?.naturalAreas || 0);
             
             document.getElementById('results').innerHTML = `
                 <div class="score" style="color: ${score > 70 ? '#4CAF50' : score > 40 ? '#FF9800' : '#F44336'}">
@@ -1081,6 +1286,20 @@
                     <div class="metric-title">☀️ Climate</div>
                     <p><strong>Solar:</strong> ${solarRadiation ? solarRadiation.toFixed(1) + ' kWh/m²/day' : 'No data'}</p>
                     <p style="font-size: 12px; opacity: 0.8;">Source: NASA POWER satellite data</p>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-title">🔊 Noise Environment</div>
+                    <p><strong>Noise Level:</strong> ${noiseLevel !== null ? noiseLevel + '/100' : 'No data'}</p>
+                    <p style="font-size: 12px; opacity: 0.8;">Roads: ${noiseData?.roadDensity || 0} | Railways: ${noiseData?.railwayCount || 0}</p>
+                    ${noiseLevel !== null ? `<p style="font-size: 12px; opacity: 0.8; color: ${noiseLevel <= 30 ? '#4CAF50' : noiseLevel <= 60 ? '#FF9800' : '#F44336'}">${noiseLevel <= 30 ? 'Quiet' : noiseLevel <= 60 ? 'Moderate' : 'Noisy'}</p>` : ''}
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-title">🌿 Biodiversity</div>
+                    <p><strong>Protected Areas:</strong> ${biodiversityData?.protectedAreas || 0} within 5km</p>
+                    <p><strong>Natural Areas:</strong> ${biodiversityData?.naturalAreas || 0} within 5km</p>
+                    <p style="font-size: 12px; opacity: 0.8;">Total features: ${biodiversityFeatures}</p>
                 </div>
                 
                 <div class="metric-card">
