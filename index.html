@@ -451,9 +451,15 @@
                     console.warn('Services failed:', err.message);
                     return { total: 0, banks: 0, atms: 0, markets: 0, police: 0 };
                 });
+                
+                await new Promise(resolve => setTimeout(resolve, 300));
+                const businessData = await fetchInfrastructure(lat, lng, 'business').catch(err => {
+                    console.warn('Business failed:', err.message);
+                    return { total: 0, offices: 0, coworking: 0, industrial: 0, commercial: 0 };
+                });
 
                 // Calculate all scores
-                const scores = calculateAllScores(greenData, airData, elevationData, weatherData, climateData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData);
+                const scores = calculateAllScores(greenData, airData, elevationData, weatherData, climateData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, businessData);
                 const score = scores.overall;
                 
                 console.log('Analysis complete. Score:', score);
@@ -476,14 +482,16 @@
                     greenSpaces: greenData.count,
                     waterBodies: greenData.waterCount,
                     healthcare: healthcareData?.total || 0,
-                    noiseLevel: noiseData?.noiseLevel
+                    noiseLevel: noiseData?.noiseLevel,
+                    businesses: businessData?.total || 0,
+                    offices: businessData?.offices || 0
                 };
                 previousClicks.unshift(clickData);
                 if (previousClicks.length > 10) previousClicks = previousClicks.slice(0, 10);
                 localStorage.setItem('scopedClicks', JSON.stringify(previousClicks));
                 
                 // Display comprehensive results with all scores
-                displayResults(scores, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, lat, lng);
+                displayResults(scores, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, businessData, lat, lng);
                 
                 // Add marker
                 clearMarkers();
@@ -507,7 +515,7 @@
         });
 
         // Display results function with all scores
-        function displayResults(scores, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, lat, lng) {
+        function displayResults(scores, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, businessData, lat, lng) {
             const scoreColor = getScoreColor(scores.overall);
             const scoreCategory = getScoreCategory(scores.overall);
             
@@ -661,6 +669,18 @@
                             <div class="metric-title">☀️ Solar Energy</div>
                             <div class="metric-value">${climateData?.solarRadiation ? climateData.solarRadiation.toFixed(1) : '--'}</div>
                             <div class="metric-subtitle">kWh/m²/day</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-title">🏢 Business Hub</div>
+                            <div class="metric-value">${businessData?.total || 0}</div>
+                            <div class="metric-subtitle">${businessData?.offices || 0}O • ${businessData?.coworking || 0}C • ${businessData?.commercial || 0}S</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-title">💼 Employment</div>
+                            <div class="metric-value">${scores.employmentOpportunity || '--'}</div>
+                            <div class="metric-subtitle">Job market score</div>
                         </div>
                         
                         ${servicesData?.atms ? `
@@ -860,7 +880,8 @@
                 healthcare: `[out:json][timeout:15];(node["amenity"="hospital"](around:2000,${lat},${lng});node["amenity"="clinic"](around:2000,${lat},${lng});node["amenity"="pharmacy"](around:2000,${lat},${lng}););out;`,
                 education: `[out:json][timeout:15];(node["amenity"="school"](around:2000,${lat},${lng});node["amenity"="college"](around:2000,${lat},${lng});node["amenity"="university"](around:2000,${lat},${lng});node["amenity"="library"](around:2000,${lat},${lng}););out;`,
                 transport: `[out:json][timeout:15];(node["highway"="bus_stop"](around:1500,${lat},${lng});node["railway"="station"](around:1500,${lat},${lng});node["public_transport"="station"](around:1500,${lat},${lng}););out;`,
-                services: `[out:json][timeout:15];(node["amenity"="bank"](around:1500,${lat},${lng});node["amenity"="atm"](around:1500,${lat},${lng});node["shop"="supermarket"](around:1500,${lat},${lng});node["amenity"="police"](around:1500,${lat},${lng}););out;`
+                services: `[out:json][timeout:15];(node["amenity"="bank"](around:1500,${lat},${lng});node["amenity"="atm"](around:1500,${lat},${lng});node["shop"="supermarket"](around:1500,${lat},${lng});node["amenity"="police"](around:1500,${lat},${lng}););out;`,
+                business: `[out:json][timeout:15];(node["office"](around:2000,${lat},${lng});way["building"="office"](around:2000,${lat},${lng});node["amenity"="coworking_space"](around:2000,${lat},${lng});way["landuse"="commercial"](around:2000,${lat},${lng});way["landuse"="industrial"](around:2000,${lat},${lng}););out;`
             };
             
             try {
@@ -912,6 +933,14 @@
                         atms: elements.filter(el => el.tags?.amenity === 'atm').length,
                         markets: elements.filter(el => el.tags?.shop === 'supermarket').length,
                         police: elements.filter(el => el.tags?.amenity === 'police').length,
+                        total: elements.length
+                    };
+                case 'business':
+                    return {
+                        offices: elements.filter(el => el.tags?.office || el.tags?.building === 'office').length,
+                        coworking: elements.filter(el => el.tags?.amenity === 'coworking_space').length,
+                        commercial: elements.filter(el => el.tags?.landuse === 'commercial').length,
+                        industrial: elements.filter(el => el.tags?.landuse === 'industrial').length,
                         total: elements.length
                     };
                 default:
@@ -1127,7 +1156,7 @@
             }
         }
         
-        function calculateAllScores(greenData, airData, elevationData, weatherData = {}, climateData = {}, noiseData = {}, biodiversityData = {}, healthcareData = {total: 0}, educationData = {total: 0}, transportData = {total: 0}, servicesData = {total: 0}) {
+        function calculateAllScores(greenData, airData, elevationData, weatherData = {}, climateData = {}, noiseData = {}, biodiversityData = {}, healthcareData = {total: 0}, educationData = {total: 0}, transportData = {total: 0}, servicesData = {total: 0}, businessData = {total: 0}) {
             console.log('Calculating all sustainability and neighborhood scores...');
             
             // === CATEGORY SCORES ===
@@ -1189,9 +1218,14 @@
             // Economic Sustainability Score (0-100)
             let economicScore = 0;
             const services = servicesData?.total || 0;
-            if (services >= 20) economicScore += 60; // 15/25 * 100
-            else if (services >= 15) economicScore += 48;
-            else economicScore += Math.min(36, services * 2.4);
+            if (services >= 20) economicScore += 40; // 10/25 * 100 (reduced from 15 to 10)
+            else if (services >= 15) economicScore += 32;
+            else economicScore += Math.min(24, services * 1.6);
+            
+            const businesses = businessData?.total || 0;
+            if (businesses >= 15) economicScore += 20; // 5/25 * 100 (new business score)
+            else if (businesses >= 10) economicScore += 16;
+            else economicScore += Math.min(12, businesses * 1.2);
             
             const solar = climateData?.solarRadiation;
             if (solar >= 6) economicScore += 40; // 10/25 * 100
@@ -1287,6 +1321,32 @@
             else if (elevation > 100) energyClimateScore += 10;
             else if (elevation > 0) energyClimateScore += 5;
             
+            // Employment Opportunity Score (0-100)
+            let employmentScore = 0;
+            const offices = businessData?.offices || 0;
+            const coworking = businessData?.coworking || 0;
+            const commercial = businessData?.commercial || 0;
+            const industrial = businessData?.industrial || 0;
+            
+            // Office buildings (40%)
+            if (offices >= 10) employmentScore += 40;
+            else if (offices >= 5) employmentScore += 30;
+            else employmentScore += offices * 4;
+            
+            // Commercial areas (30%)
+            if (commercial >= 5) employmentScore += 30;
+            else employmentScore += commercial * 6;
+            
+            // Coworking spaces (20%)
+            if (coworking >= 3) employmentScore += 20;
+            else employmentScore += coworking * 7;
+            
+            // Industrial areas (10%)
+            if (industrial >= 2) employmentScore += 10;
+            else employmentScore += industrial * 5;
+            
+            employmentScore = Math.min(100, employmentScore);
+            
             const scores = {
                 overall: overallScore,
                 environmental: Math.round(envScore),
@@ -1296,7 +1356,8 @@
                 traffic: Math.round(trafficScore),
                 greenLiving: Math.round(greenLivingScore),
                 healthSafety: Math.round(healthSafetyScore),
-                energyClimate: Math.round(energyClimateScore)
+                energyClimate: Math.round(energyClimateScore),
+                employmentOpportunity: Math.round(employmentScore)
             };
             
             console.log('All scores calculated:', scores);

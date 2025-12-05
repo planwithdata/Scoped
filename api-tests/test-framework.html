@@ -73,6 +73,16 @@
             <div id="services-result"></div>
         </div>
         
+        <!-- Business API Test -->
+        <div class="test-card">
+            <div class="test-header">
+                <div class="test-title">🏢 Business Infrastructure (Overpass API)</div>
+                <button class="test-btn" onclick="testBusiness()">Test</button>
+            </div>
+            <div>Tests: Offices, coworking spaces, commercial & industrial areas within 2km radius</div>
+            <div id="business-result"></div>
+        </div>
+        
         <!-- Weather API Test -->
         <div class="test-card">
             <div class="test-header">
@@ -147,6 +157,18 @@
             </div>
             <div>Tests: Protected areas and natural spaces within 5km</div>
             <div id="biodiversity-result"></div>
+        </div>
+        
+        <h2>💼 Phase 4 APIs - Economic Enhancement</h2>
+        
+        <!-- Employment Opportunity Test -->
+        <div class="test-card">
+            <div class="test-header">
+                <div class="test-title">💼 Employment Opportunity Score</div>
+                <button class="test-btn" onclick="testEmploymentScore()">Test</button>
+            </div>
+            <div>Tests: Combined business infrastructure to calculate employment opportunities</div>
+            <div id="employment-result"></div>
         </div>
     </div>
 
@@ -318,6 +340,71 @@
             } catch (error) {
                 showResult('services-result', 'error', `Services API test failed: ${error.message}`);
             }
+        }
+        
+        async function testBusiness() {
+            const { lat, lng } = getCoords();
+            showResult('business-result', 'loading', 'Testing business infrastructure...');
+            
+            try {
+                const query = `
+                    [out:json][timeout:15];
+                    (
+                      node["office"](around:2000,${lat},${lng});
+                      way["building"="office"](around:2000,${lat},${lng});
+                      node["amenity"="coworking_space"](around:2000,${lat},${lng});
+                      way["landuse"="commercial"](around:2000,${lat},${lng});
+                      way["landuse"="industrial"](around:2000,${lat},${lng});
+                    );
+                    out;
+                `;
+                
+                const response = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    body: query
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const facilities = {
+                    offices: data.elements.filter(el => el.tags?.office || el.tags?.building === 'office').length,
+                    coworking: data.elements.filter(el => el.tags?.amenity === 'coworking_space').length,
+                    commercial: data.elements.filter(el => el.tags?.landuse === 'commercial').length,
+                    industrial: data.elements.filter(el => el.tags?.landuse === 'industrial').length,
+                    total: data.elements.length,
+                    employmentScore: calculateEmploymentScore(data.elements)
+                };
+                
+                showResult('business-result', 'success', 'Business API test successful!', facilities);
+            } catch (error) {
+                showResult('business-result', 'error', `Business API test failed: ${error.message}`);
+            }
+        }
+        
+        function calculateEmploymentScore(elements) {
+            const offices = elements.filter(el => el.tags?.office || el.tags?.building === 'office').length;
+            const coworking = elements.filter(el => el.tags?.amenity === 'coworking_space').length;
+            const commercial = elements.filter(el => el.tags?.landuse === 'commercial').length;
+            const industrial = elements.filter(el => el.tags?.landuse === 'industrial').length;
+            
+            let score = 0;
+            if (offices >= 10) score += 40;
+            else if (offices >= 5) score += 30;
+            else score += offices * 4;
+            
+            if (commercial >= 5) score += 30;
+            else score += commercial * 6;
+            
+            if (coworking >= 3) score += 20;
+            else score += coworking * 7;
+            
+            if (industrial >= 2) score += 10;
+            else score += industrial * 5;
+            
+            return Math.min(100, score);
         }
         
         async function testWeather() {
@@ -665,6 +752,87 @@
                 showResult('biodiversity-result', 'success', 'Biodiversity indicators test successful!', biodiversityData);
             } catch (error) {
                 showResult('biodiversity-result', 'error', `Biodiversity test failed: ${error.message}`);
+            }
+        }
+        
+        async function testEmploymentScore() {
+            const { lat, lng } = getCoords();
+            showResult('employment-result', 'loading', 'Testing employment opportunity calculation...');
+            
+            try {
+                // First get business data
+                const businessQuery = `
+                    [out:json][timeout:15];
+                    (
+                      node["office"](around:2000,${lat},${lng});
+                      way["building"="office"](around:2000,${lat},${lng});
+                      node["amenity"="coworking_space"](around:2000,${lat},${lng});
+                      way["landuse"="commercial"](around:2000,${lat},${lng});
+                      way["landuse"="industrial"](around:2000,${lat},${lng});
+                    );
+                    out;
+                `;
+                
+                const businessResponse = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    body: businessQuery
+                });
+                
+                if (!businessResponse.ok) {
+                    throw new Error(`Business API HTTP ${businessResponse.status}: ${businessResponse.statusText}`);
+                }
+                
+                const businessData = await businessResponse.json();
+                
+                const offices = businessData.elements.filter(el => el.tags?.office || el.tags?.building === 'office').length;
+                const coworking = businessData.elements.filter(el => el.tags?.amenity === 'coworking_space').length;
+                const commercial = businessData.elements.filter(el => el.tags?.landuse === 'commercial').length;
+                const industrial = businessData.elements.filter(el => el.tags?.landuse === 'industrial').length;
+                
+                // Calculate employment score using same algorithm as main app
+                let employmentScore = 0;
+                
+                // Office buildings (40%)
+                if (offices >= 10) employmentScore += 40;
+                else if (offices >= 5) employmentScore += 30;
+                else employmentScore += offices * 4;
+                
+                // Commercial areas (30%)
+                if (commercial >= 5) employmentScore += 30;
+                else employmentScore += commercial * 6;
+                
+                // Coworking spaces (20%)
+                if (coworking >= 3) employmentScore += 20;
+                else employmentScore += coworking * 7;
+                
+                // Industrial areas (10%)
+                if (industrial >= 2) employmentScore += 10;
+                else employmentScore += industrial * 5;
+                
+                employmentScore = Math.min(100, employmentScore);
+                
+                const employmentData = {
+                    employmentScore: employmentScore,
+                    scoreCategory: employmentScore >= 80 ? 'Excellent' : 
+                                  employmentScore >= 60 ? 'Good' : 
+                                  employmentScore >= 40 ? 'Fair' : 
+                                  employmentScore >= 20 ? 'Poor' : 'Critical',
+                    breakdown: {
+                        offices: { count: offices, contribution: Math.min(40, offices >= 10 ? 40 : offices >= 5 ? 30 : offices * 4) },
+                        commercial: { count: commercial, contribution: Math.min(30, commercial >= 5 ? 30 : commercial * 6) },
+                        coworking: { count: coworking, contribution: Math.min(20, coworking >= 3 ? 20 : coworking * 7) },
+                        industrial: { count: industrial, contribution: Math.min(10, industrial >= 2 ? 10 : industrial * 5) }
+                    },
+                    totalBusinessFeatures: businessData.elements.length,
+                    jobMarketInsight: employmentScore >= 70 ? 'Strong job market with diverse opportunities' :
+                                     employmentScore >= 40 ? 'Moderate employment opportunities' :
+                                     'Limited job market - may require commuting',
+                    searchRadius: '2km'
+                };
+                
+                showResult('employment-result', 'success', 'Employment opportunity calculation successful!', employmentData);
+            } catch (error) {
+                showResult('employment-result', 'error', `Employment test failed: ${error.message}`);
             }
         }
     </script>
