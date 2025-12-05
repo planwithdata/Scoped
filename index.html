@@ -108,13 +108,46 @@
         
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
+        /* Compact metrics grid for more data */
+        .metrics-grid { 
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); 
+            gap: 10px; margin-top: 15px;
+        }
+        
+        .metric-card { 
+            background: white; padding: 12px; border-radius: 8px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 3px solid #4CAF50;
+            min-height: 80px; display: flex; flex-direction: column; justify-content: space-between;
+        }
+        
+        .metric-title { font-size: 11px; color: #666; margin-bottom: 4px; font-weight: 600; }
+        .metric-value { font-size: 18px; font-weight: 700; color: #333; line-height: 1.2; }
+        .metric-subtitle { font-size: 10px; color: #999; margin-top: 2px; }
+        
+        /* Category sections */
+        .category-section {
+            margin: 15px 0; padding: 12px; border-radius: 10px;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .category-title {
+            font-size: 14px; font-weight: 700; margin-bottom: 10px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        
+        .env-section { background: linear-gradient(135deg, #e8f5e8, #f0f8f0); border-left-color: #4CAF50; }
+        .social-section { background: linear-gradient(135deg, #fff3e0, #fef7ed); border-left-color: #ff9800; }
+        .economic-section { background: linear-gradient(135deg, #f3e5f5, #faf5ff); border-left-color: #9c27b0; }
+        
         /* Responsive Design */
         @media (max-width: 768px) {
             .app-container { flex-direction: column; }
-            .sidebar { width: 100%; height: 50vh; }
-            .map-container { height: 50vh; }
-            .metrics-grid { grid-template-columns: 1fr; }
+            .sidebar { width: 100%; height: 60vh; }
+            .map-container { height: 40vh; }
+            .metrics-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
             .score-circle { width: 80px; height: 80px; font-size: 24px; }
+            .metric-card { padding: 8px; min-height: 70px; }
+            .metric-value { font-size: 16px; }
         }
         
         @media (min-width: 1400px) {
@@ -308,10 +341,10 @@
             try {
                 console.log('Starting analysis for:', lat, lng);
                 
-                // Fetch basic data first
+                // Fetch all data sources as per sustainability framework
                 const greenData = await fetchGreenSpaces(lat, lng).catch(err => {
                     console.warn('Green spaces failed:', err.message);
-                    return { count: 0, waterCount: 0 };
+                    return { count: 0, waterCount: 0, types: [] };
                 });
                 
                 const airData = await fetchRealAQI(lat, lng).catch(err => {
@@ -321,63 +354,88 @@
                 
                 const weatherData = await fetchWeather(lat, lng).catch(err => {
                     console.warn('Weather failed:', err.message);
-                    return { temperature: null, humidity: null };
+                    return { temperature: null, humidity: null, pressure: null, windSpeed: null };
                 });
                 
                 const climateData = await fetchClimateData(lat, lng).catch(err => {
                     console.warn('Climate failed:', err.message);
-                    return { solarRadiation: null };
+                    return { solarRadiation: null, nasaTemperature: null, nasaHumidity: null };
                 });
                 
-                // Fetch infrastructure with delays
+                const elevationData = await fetchElevation(lat, lng).catch(err => {
+                    console.warn('Elevation failed:', err.message);
+                    return { elevation: null };
+                });
+                
+                // Phase 3 Environmental Monitoring
+                const noiseData = await fetchNoisePollution(lat, lng).catch(err => {
+                    console.warn('Noise pollution failed:', err.message);
+                    return { noiseLevel: null, roadDensity: 0, railwayCount: 0 };
+                });
+                
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
+                const biodiversityData = await fetchBiodiversity(lat, lng).catch(err => {
+                    console.warn('Biodiversity failed:', err.message);
+                    return { protectedAreas: 0, naturalAreas: 0 };
+                });
+                
+                // Infrastructure with delays
+                await new Promise(resolve => setTimeout(resolve, 300));
                 const healthcareData = await fetchInfrastructure(lat, lng, 'healthcare').catch(err => {
                     console.warn('Healthcare failed:', err.message);
-                    return { total: 0 };
+                    return { total: 0, hospitals: 0, clinics: 0, pharmacies: 0 };
                 });
                 
-                await new Promise(resolve => setTimeout(resolve, 500));
-                
+                await new Promise(resolve => setTimeout(resolve, 300));
                 const educationData = await fetchInfrastructure(lat, lng, 'education').catch(err => {
                     console.warn('Education failed:', err.message);
-                    return { total: 0 };
+                    return { total: 0, schools: 0, colleges: 0, libraries: 0 };
                 });
                 
-                await new Promise(resolve => setTimeout(resolve, 500));
-                
+                await new Promise(resolve => setTimeout(resolve, 300));
                 const transportData = await fetchInfrastructure(lat, lng, 'transport').catch(err => {
                     console.warn('Transport failed:', err.message);
-                    return { total: 0 };
+                    return { total: 0, busStops: 0, stations: 0 };
                 });
                 
-                await new Promise(resolve => setTimeout(resolve, 500));
-                
+                await new Promise(resolve => setTimeout(resolve, 300));
                 const servicesData = await fetchInfrastructure(lat, lng, 'services').catch(err => {
                     console.warn('Services failed:', err.message);
-                    return { total: 0 };
+                    return { total: 0, banks: 0, atms: 0, markets: 0, police: 0 };
                 });
 
-                // Calculate score
-                const score = calculateSustainabilityScore(greenData, airData, {}, weatherData, climateData, {}, {}, healthcareData, educationData, transportData, servicesData);
+                // Calculate comprehensive score with all data
+                const score = calculateSustainabilityScore(greenData, airData, elevationData, weatherData, climateData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData);
                 
                 console.log('Analysis complete. Score:', score);
                 
-                // Save to history
+                // Save comprehensive data to history
                 const clickData = {
                     lat: lat.toFixed(4),
                     lng: lng.toFixed(4),
                     score,
                     timestamp: new Date().toLocaleString(),
                     aqi: airData?.value,
+                    pm25: airData?.pm25Concentration,
                     temperature: weatherData?.temperature,
                     greenSpaces: greenData.count,
-                    healthcare: healthcareData?.total || 0
+                    waterBodies: greenData.waterCount,
+                    healthcare: healthcareData?.total || 0,
+                    education: educationData?.total || 0,
+                    transport: transportData?.total || 0,
+                    services: servicesData?.total || 0,
+                    noiseLevel: noiseData?.noiseLevel,
+                    biodiversity: (biodiversityData?.protectedAreas || 0) + (biodiversityData?.naturalAreas || 0),
+                    elevation: elevationData?.elevation,
+                    solarRadiation: climateData?.solarRadiation
                 };
                 previousClicks.unshift(clickData);
                 if (previousClicks.length > 10) previousClicks = previousClicks.slice(0, 10);
                 localStorage.setItem('scopedClicks', JSON.stringify(previousClicks));
                 
-                // Display results
-                displayResults(score, greenData, airData, weatherData, climateData, {}, {}, {}, healthcareData, educationData, transportData, servicesData, lat, lng);
+                // Display comprehensive results
+                displayResults(score, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, lat, lng);
                 
                 // Add marker
                 clearMarkers();
@@ -414,41 +472,114 @@
                     <div class="score-text">📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}</div>
                 </div>
                 
-                <div class="metrics-grid">
-                    <div class="metric-card">
-                        <div class="metric-title">🌬️ Air Quality</div>
-                        <div class="metric-value">${airData?.value || '--'}</div>
-                        <div class="metric-subtitle">AQI Index</div>
+                <!-- Environmental Health (40%) -->
+                <div class="category-section env-section">
+                    <div class="category-title">🌱 Environmental Health (40%)</div>
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-title">🌬️ Air Quality</div>
+                            <div class="metric-value">${airData?.value || '--'}</div>
+                            <div class="metric-subtitle">${airData?.pm25Concentration ? `PM2.5: ${airData.pm25Concentration.toFixed(1)}` : 'AQI Index'}</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-title">🌳 Green Spaces</div>
+                            <div class="metric-value">${greenData.count || 0}</div>
+                            <div class="metric-subtitle">Parks & Nature</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-title">💧 Water Bodies</div>
+                            <div class="metric-value">${greenData.waterCount || 0}</div>
+                            <div class="metric-subtitle">Rivers & Lakes</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-title">🌡️ Temperature</div>
+                            <div class="metric-value">${weatherData?.temperature ? `${weatherData.temperature.toFixed(1)}°C` : '--'}</div>
+                            <div class="metric-subtitle">${weatherData?.humidity ? `${weatherData.humidity}% RH` : 'Climate'}</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-title">🔊 Noise Level</div>
+                            <div class="metric-value">${noiseData?.noiseLevel !== null ? noiseData.noiseLevel : '--'}</div>
+                            <div class="metric-subtitle">${noiseData?.roadDensity || 0} roads nearby</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-title">🌿 Biodiversity</div>
+                            <div class="metric-value">${(biodiversityData?.protectedAreas || 0) + (biodiversityData?.naturalAreas || 0)}</div>
+                            <div class="metric-subtitle">Protected areas</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-title">⛰️ Elevation</div>
+                            <div class="metric-value">${elevationData?.elevation ? `${elevationData.elevation}m` : '--'}</div>
+                            <div class="metric-subtitle">Above sea level</div>
+                        </div>
+                        
+                        ${weatherData?.pressure ? `
+                        <div class="metric-card">
+                            <div class="metric-title">🌪️ Pressure</div>
+                            <div class="metric-value">${weatherData.pressure}</div>
+                            <div class="metric-subtitle">hPa</div>
+                        </div>` : ''}
+                        
+                        ${weatherData?.windSpeed ? `
+                        <div class="metric-card">
+                            <div class="metric-title">🌬️ Wind</div>
+                            <div class="metric-value">${weatherData.windSpeed.toFixed(1)}</div>
+                            <div class="metric-subtitle">m/s</div>
+                        </div>` : ''}
                     </div>
-                    
-                    <div class="metric-card">
-                        <div class="metric-title">🌳 Green Spaces</div>
-                        <div class="metric-value">${greenData.count || 0}</div>
-                        <div class="metric-subtitle">Parks & Nature</div>
+                </div>
+                
+                <!-- Social Infrastructure (35%) -->
+                <div class="category-section social-section">
+                    <div class="category-title">🏥 Social Infrastructure (35%)</div>
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-title">🏥 Healthcare</div>
+                            <div class="metric-value">${healthcareData?.total || 0}</div>
+                            <div class="metric-subtitle">${healthcareData?.hospitals || 0}H • ${healthcareData?.clinics || 0}C • ${healthcareData?.pharmacies || 0}P</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-title">🏫 Education</div>
+                            <div class="metric-value">${educationData?.total || 0}</div>
+                            <div class="metric-subtitle">${educationData?.schools || 0}S • ${educationData?.colleges || 0}C • ${educationData?.libraries || 0}L</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-title">🚌 Transport</div>
+                            <div class="metric-value">${transportData?.total || 0}</div>
+                            <div class="metric-subtitle">${transportData?.busStops || 0} bus • ${transportData?.stations || 0} rail</div>
+                        </div>
                     </div>
-                    
-                    <div class="metric-card">
-                        <div class="metric-title">🏥 Healthcare</div>
-                        <div class="metric-value">${healthcareData?.total || 0}</div>
-                        <div class="metric-subtitle">Facilities nearby</div>
-                    </div>
-                    
-                    <div class="metric-card">
-                        <div class="metric-title">🏫 Education</div>
-                        <div class="metric-value">${educationData?.total || 0}</div>
-                        <div class="metric-subtitle">Schools & Libraries</div>
-                    </div>
-                    
-                    <div class="metric-card">
-                        <div class="metric-title">🚌 Transport</div>
-                        <div class="metric-value">${transportData?.total || 0}</div>
-                        <div class="metric-subtitle">Public stops</div>
-                    </div>
-                    
-                    <div class="metric-card">
-                        <div class="metric-title">☀️ Solar Energy</div>
-                        <div class="metric-value">${climateData?.solarRadiation ? climateData.solarRadiation.toFixed(1) : '--'}</div>
-                        <div class="metric-subtitle">kWh/m²/day</div>
+                </div>
+                
+                <!-- Economic Sustainability (25%) -->
+                <div class="category-section economic-section">
+                    <div class="category-title">🏪 Economic Sustainability (25%)</div>
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-title">🏦 Essential Services</div>
+                            <div class="metric-value">${servicesData?.total || 0}</div>
+                            <div class="metric-subtitle">${servicesData?.banks || 0}B • ${servicesData?.markets || 0}M • ${servicesData?.police || 0}P</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-title">☀️ Solar Energy</div>
+                            <div class="metric-value">${climateData?.solarRadiation ? climateData.solarRadiation.toFixed(1) : '--'}</div>
+                            <div class="metric-subtitle">kWh/m²/day</div>
+                        </div>
+                        
+                        ${servicesData?.atms ? `
+                        <div class="metric-card">
+                            <div class="metric-title">🏧 ATMs</div>
+                            <div class="metric-value">${servicesData.atms}</div>
+                            <div class="metric-subtitle">Cash access</div>
+                        </div>` : ''}
                     </div>
                 </div>
             `;
@@ -639,8 +770,8 @@
             const queries = {
                 healthcare: `[out:json][timeout:15];(node["amenity"="hospital"](around:2000,${lat},${lng});node["amenity"="clinic"](around:2000,${lat},${lng});node["amenity"="pharmacy"](around:2000,${lat},${lng}););out;`,
                 education: `[out:json][timeout:15];(node["amenity"="school"](around:2000,${lat},${lng});node["amenity"="college"](around:2000,${lat},${lng});node["amenity"="university"](around:2000,${lat},${lng});node["amenity"="library"](around:2000,${lat},${lng}););out;`,
-                transport: `[out:json][timeout:15];(node["highway"="bus_stop"](around:1500,${lat},${lng});node["railway"="station"](around:1500,${lat},${lng}););out;`,
-                services: `[out:json][timeout:15];(node["amenity"="bank"](around:1500,${lat},${lng});node["shop"="supermarket"](around:1500,${lat},${lng}););out;`
+                transport: `[out:json][timeout:15];(node["highway"="bus_stop"](around:1500,${lat},${lng});node["railway"="station"](around:1500,${lat},${lng});node["public_transport"="station"](around:1500,${lat},${lng}););out;`,
+                services: `[out:json][timeout:15];(node["amenity"="bank"](around:1500,${lat},${lng});node["amenity"="atm"](around:1500,${lat},${lng});node["shop"="supermarket"](around:1500,${lat},${lng});node["amenity"="police"](around:1500,${lat},${lng}););out;`
             };
             
             try {
@@ -651,15 +782,51 @@
                 
                 if (!response.ok) {
                     console.warn(`${type} API returned ${response.status}`);
-                    return { total: 0 };
+                    return processInfrastructureData([], type);
                 }
                 
                 const data = await response.json();
                 console.log(`${type} found:`, data.elements.length);
-                return { total: data.elements.length };
+                return processInfrastructureData(data.elements, type);
             } catch (error) {
                 console.error(`${type} fetch error:`, error.message);
-                return { total: 0 };
+                return processInfrastructureData([], type);
+            }
+        }
+        
+        function processInfrastructureData(elements, type) {
+            switch (type) {
+                case 'healthcare':
+                    return {
+                        hospitals: elements.filter(el => el.tags?.amenity === 'hospital').length,
+                        clinics: elements.filter(el => el.tags?.amenity === 'clinic').length,
+                        pharmacies: elements.filter(el => el.tags?.amenity === 'pharmacy').length,
+                        total: elements.length
+                    };
+                case 'education':
+                    return {
+                        schools: elements.filter(el => el.tags?.amenity === 'school').length,
+                        colleges: elements.filter(el => el.tags?.amenity === 'college').length,
+                        universities: elements.filter(el => el.tags?.amenity === 'university').length,
+                        libraries: elements.filter(el => el.tags?.amenity === 'library').length,
+                        total: elements.length
+                    };
+                case 'transport':
+                    return {
+                        busStops: elements.filter(el => el.tags?.highway === 'bus_stop').length,
+                        stations: elements.filter(el => el.tags?.railway === 'station' || el.tags?.public_transport === 'station').length,
+                        total: elements.length
+                    };
+                case 'services':
+                    return {
+                        banks: elements.filter(el => el.tags?.amenity === 'bank').length,
+                        atms: elements.filter(el => el.tags?.amenity === 'atm').length,
+                        markets: elements.filter(el => el.tags?.shop === 'supermarket').length,
+                        police: elements.filter(el => el.tags?.amenity === 'police').length,
+                        total: elements.length
+                    };
+                default:
+                    return { total: elements.length };
             }
         }
         
@@ -765,10 +932,119 @@
             }
         }
         
+        // Add missing API functions
+        async function fetchElevation(lat, lng) {
+            try {
+                const response = await fetch(`https://api.open-elevation.com/api/v1/lookup?locations=${lat},${lng}`);
+                if (!response.ok) throw new Error('Elevation API error');
+                const data = await response.json();
+                console.log('Elevation data:', data.results[0]);
+                return data.results[0];
+            } catch (error) {
+                console.error('Elevation fetch failed:', error.message);
+                return { elevation: null };
+            }
+        }
+        
+        async function fetchNoisePollution(lat, lng) {
+            try {
+                const radius = 500;
+                const query = `
+                    [out:json][timeout:15];
+                    (
+                      way["highway"~"^(motorway|trunk|primary|secondary)$"](around:${radius},${lat},${lng});
+                      way["highway"="tertiary"](around:${radius},${lat},${lng});
+                      way["railway"="rail"](around:${radius},${lat},${lng});
+                    );
+                    out;
+                `;
+                
+                const response = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    body: query
+                });
+                
+                if (!response.ok) throw new Error('Noise API error');
+                
+                const data = await response.json();
+                const roads = data.elements.filter(el => el.tags?.highway);
+                const railways = data.elements.filter(el => el.tags?.railway);
+                
+                let noiseScore = 0;
+                roads.forEach(road => {
+                    const roadType = road.tags.highway;
+                    if (['motorway', 'trunk'].includes(roadType)) noiseScore += 10;
+                    else if (['primary', 'secondary'].includes(roadType)) noiseScore += 5;
+                    else if (roadType === 'tertiary') noiseScore += 2;
+                });
+                
+                noiseScore += railways.length * 8;
+                const noiseLevel = Math.min(noiseScore, 100);
+                
+                console.log('Noise analysis:', { noiseLevel, roads: roads.length, railways: railways.length });
+                return {
+                    noiseLevel,
+                    roadDensity: roads.length,
+                    railwayCount: railways.length
+                };
+            } catch (error) {
+                console.error('Noise pollution fetch failed:', error.message);
+                return { noiseLevel: null, roadDensity: 0, railwayCount: 0 };
+            }
+        }
+        
+        async function fetchBiodiversity(lat, lng) {
+            try {
+                const radius = 5000;
+                const query = `
+                    [out:json][timeout:15];
+                    (
+                      way["leisure"="nature_reserve"](around:${radius},${lat},${lng});
+                      way["boundary"="protected_area"](around:${radius},${lat},${lng});
+                      way["boundary"="national_park"](around:${radius},${lat},${lng});
+                      way["natural"="wetland"](around:${radius},${lat},${lng});
+                      way["landuse"="forest"](around:${radius},${lat},${lng});
+                    );
+                    out;
+                `;
+                
+                const response = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    body: query
+                });
+                
+                if (!response.ok) throw new Error('Biodiversity API error');
+                
+                const data = await response.json();
+                const protectedAreas = data.elements.filter(el => 
+                    ['nature_reserve', 'protected_area', 'national_park'].includes(
+                        el.tags?.leisure || el.tags?.boundary
+                    )
+                ).length;
+                
+                const naturalAreas = data.elements.filter(el => 
+                    ['wetland', 'forest'].includes(el.tags?.natural || el.tags?.landuse)
+                ).length;
+                
+                console.log('Biodiversity analysis:', { protectedAreas, naturalAreas });
+                return {
+                    protectedAreas,
+                    naturalAreas,
+                    totalBiodiversityFeatures: data.elements.length
+                };
+            } catch (error) {
+                console.error('Biodiversity fetch failed:', error.message);
+                return { protectedAreas: 0, naturalAreas: 0 };
+            }
+        }
+        
         function calculateSustainabilityScore(greenData, airData, elevationData, weatherData = {}, climateData = {}, noiseData = {}, biodiversityData = {}, healthcareData = {total: 0}, educationData = {total: 0}, transportData = {total: 0}, servicesData = {total: 0}) {
             let totalScore = 0;
+            console.log('Calculating comprehensive sustainability score...');
             
-            // Air Quality (15%)
+            // === ENVIRONMENTAL HEALTH (40% total weight) ===
+            
+            // Air Quality Score (15% weight)
             const aqi = airData?.value;
             if (aqi !== null && aqi !== undefined) {
                 if (aqi <= 50) totalScore += 15;
@@ -777,55 +1053,74 @@
                 else if (aqi <= 200) totalScore += 4;
             }
             
-            // Green Spaces (12%)
+            // Green Space Access (12% weight)
             const greenCount = greenData.count || 0;
             if (greenCount >= 15) totalScore += 12;
             else if (greenCount >= 10) totalScore += 10;
             else if (greenCount >= 5) totalScore += 7;
             else totalScore += Math.max(0, greenCount * 2);
             
-            // Water Bodies (3%)
+            // Water Body Access (3% weight)
             const waterCount = greenData.waterCount || 0;
             totalScore += Math.min(3, waterCount);
             
-            // Climate Comfort (10%)
+            // Climate Comfort (5% weight)
             const temperature = weatherData?.temperature;
-            if (temperature >= 18 && temperature <= 26) totalScore += 10;
-            else if (temperature >= 15 && temperature <= 30) totalScore += 6;
-            else if (temperature >= 10 && temperature <= 35) totalScore += 3;
+            if (temperature >= 18 && temperature <= 26) totalScore += 5;
+            else if (temperature >= 15 && temperature <= 30) totalScore += 3;
+            else if (temperature >= 10 && temperature <= 35) totalScore += 1;
             
-            // Healthcare (15%)
+            // Noise Pollution (3% weight) - Lower noise = higher score
+            const noiseLevel = noiseData?.noiseLevel;
+            if (noiseLevel !== null && noiseLevel !== undefined) {
+                if (noiseLevel <= 20) totalScore += 3;
+                else if (noiseLevel <= 40) totalScore += 2;
+                else if (noiseLevel <= 60) totalScore += 1;
+            }
+            
+            // Biodiversity Score (2% weight)
+            const biodiversityFeatures = (biodiversityData?.protectedAreas || 0) + (biodiversityData?.naturalAreas || 0);
+            if (biodiversityFeatures >= 3) totalScore += 2;
+            else if (biodiversityFeatures >= 2) totalScore += 1.5;
+            else if (biodiversityFeatures >= 1) totalScore += 1;
+            
+            // === SOCIAL INFRASTRUCTURE (35% total weight) ===
+            
+            // Healthcare Access (15% weight)
             const healthcare = healthcareData?.total || 0;
             if (healthcare >= 10) totalScore += 15;
             else if (healthcare >= 7) totalScore += 12;
             else if (healthcare >= 4) totalScore += 9;
             else totalScore += healthcare * 2;
             
-            // Education (10%)
+            // Education Access (10% weight)
             const education = educationData?.total || 0;
             if (education >= 8) totalScore += 10;
             else if (education >= 5) totalScore += 8;
             else totalScore += Math.min(6, education * 1.5);
             
-            // Transport (10%)
+            // Public Transport (10% weight)
             const transport = transportData?.total || 0;
             if (transport >= 15) totalScore += 10;
             else if (transport >= 10) totalScore += 8;
             else totalScore += Math.min(6, transport * 0.6);
             
-            // Services (15%)
+            // === ECONOMIC SUSTAINABILITY (25% total weight) ===
+            
+            // Essential Services (15% weight)
             const services = servicesData?.total || 0;
             if (services >= 20) totalScore += 15;
             else if (services >= 15) totalScore += 12;
             else totalScore += Math.min(9, services * 0.6);
             
-            // Energy Potential (10%)
+            // Energy Potential (10% weight)
             const solar = climateData?.solarRadiation;
             if (solar >= 6) totalScore += 10;
             else if (solar >= 4.5) totalScore += 8;
             else if (solar >= 3) totalScore += 6;
             else if (solar >= 2) totalScore += 4;
             
+            console.log('Final sustainability score:', Math.round(totalScore));
             return Math.round(totalScore);
         }
     </script>
