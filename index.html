@@ -279,6 +279,10 @@
                         📊
                         <div class="tooltip">View History</div>
                     </button>
+                    <button class="icon-btn" id="basemap-btn">
+                        🗺️
+                        <div class="tooltip">Change Map View</div>
+                    </button>
                 </div>
             </div>
             
@@ -293,13 +297,6 @@
         
         <!-- Map -->
         <div class="map-container">
-            <div class="map-overlay">
-                <h3>Interactive Sustainability Map</h3>
-                <p>Click any location to analyze its sustainability score</p>
-                <div style="margin-top: 10px;">
-                    <button class="btn btn-secondary" id="basemap-btn" style="width: auto; padding: 8px 12px; margin: 0;">🗺️ Change View</button>
-                </div>
-            </div>
             <div id="map"></div>
         </div>
     </div>
@@ -340,8 +337,8 @@
         <div class="popup-content">
             <span class="popup-close" onclick="closePopup('basemap-popup')">&times;</span>
             <h3>🗺️ Choose Map Style</h3>
-            <button class="btn btn-secondary" onclick="changeBasemap('osm')" style="margin: 10px 0;">Street Map</button>
-            <button class="btn btn-secondary" onclick="changeBasemap('satellite')" style="margin: 10px 0;">Satellite View</button>
+            <button class="btn btn-secondary" onclick="changeBasemap('osm')" style="margin: 10px 0;">🗺️ Street Map</button>
+            <button class="btn btn-secondary" onclick="changeBasemap('satellite')" style="margin: 10px 0;">🛰️ Satellite View</button>
         </div>
     </div>
     
