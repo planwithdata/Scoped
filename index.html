@@ -133,28 +133,33 @@
             };
         }
 
-        // Fetch air quality using OpenAQ API v3
-        async function fetchAirQuality(lat, lng) {
-            const response = await fetch(
-                `https://api.openaq.org/v3/locations?coordinates=${lat},${lng}&radius=25000&limit=1&parameters_id=2`
-            );
-            
-            if (!response.ok) throw new Error('OpenAQ API error');
-            
-            const data = await response.json();
-            const location = data.results[0];
-            if (!location) return { value: null };
-            
-            // Get latest measurement for this location
-            const measurementResponse = await fetch(
-                `https://api.openaq.org/v3/locations/${location.id}/latest?parameters_id=2`
-            );
-            
-            if (!measurementResponse.ok) return { value: null };
-            
-            const measurementData = await measurementResponse.json();
-            return measurementData.results[0] || { value: null };
+        // --- Use OpenAQ v2 public endpoint (no auth) ---
+        const OPENAQ_ENDPOINT_V2 = 'https://api.openaq.org/v2/latest';
+        
+        // Fetch nearest PM2.5 using OpenAQ v2
+        async function fetchAQI(lat, lon) {
+          try {
+            // v2 query: coordinates=lat,lon and radius in meters
+            const url = `${OPENAQ_ENDPOINT_V2}?limit=5&coordinates=${lat},${lon}&radius=50000&parameter=pm25&order_by=distance`;
+            const res = await fetch(url);
+            if (!res.ok) {
+              console.warn('OpenAQ v2 returned non-OK', res.status, await res.text());
+              return null;
+            }
+            const obj = await res.json();
+            if (!obj || !obj.results || obj.results.length === 0) return null;
+            const measurements = obj.results[0].measurements;
+            if (!measurements || measurements.length === 0) return null;
+            const pm25 = measurements[0].value;
+            // Map PM2.5 into 0..100 (lower is better), keep same simple scoring as POC
+            const score = Math.round(Math.max(0, Math.min(100, (pm25/300)*100 )));
+            return { pm25, score };
+          } catch(err) {
+            console.warn('OpenAQ v2 error', err);
+            return null;
+          }
         }
+
 
         // Fetch elevation using Open-Elevation API
         async function fetchElevation(lat, lng) {
