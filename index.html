@@ -29,14 +29,35 @@
         }
         
         .header { 
-            padding: 20px; background: linear-gradient(135deg, #4CAF50, #45a049);
-            color: white; text-align: center;
+            padding: 15px 20px; background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white; display: flex; align-items: center; justify-content: space-between;
         }
         
-        .header h1 { font-size: 24px; margin-bottom: 5px; }
-        .header p { opacity: 0.9; font-size: 14px; }
+        .header-left h1 { font-size: 24px; margin: 0; }
+        .header-left p { opacity: 0.9; font-size: 14px; margin: 5px 0 0 0; }
         
-        .controls { padding: 20px; border-bottom: 1px solid #eee; }
+        .header-buttons { display: flex; gap: 8px; }
+        
+        .icon-btn {
+            width: 36px; height: 36px; border: none; border-radius: 50%;
+            background: rgba(255,255,255,0.2); color: white; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; transition: all 0.3s ease; position: relative;
+        }
+        
+        .icon-btn:hover {
+            background: rgba(255,255,255,0.3); transform: scale(1.1);
+        }
+        
+        .tooltip {
+            position: absolute; bottom: -35px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); color: white; padding: 4px 8px;
+            border-radius: 4px; font-size: 12px; white-space: nowrap;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .icon-btn:hover .tooltip { opacity: 1; }
         
         .btn { 
             width: 100%; padding: 12px; margin: 8px 0; border: none; border-radius: 8px;
@@ -186,8 +207,12 @@
         /* Responsive Design */
         @media (max-width: 768px) {
             .app-container { flex-direction: column; }
-            .sidebar { width: 100%; height: 45vh; overflow-y: auto; }
-            .map-container { height: 55vh; }
+            .sidebar { width: 100%; height: 40vh; overflow-y: auto; }
+            .map-container { height: 60vh; }
+            .header { padding: 12px 15px; }
+            .header-left h1 { font-size: 20px; }
+            .header-left p { font-size: 12px; }
+            .icon-btn { width: 32px; height: 32px; font-size: 14px; }
             .category-score-grid { grid-template-columns: 1fr; gap: 10px; }
             .category-score-card { padding: 15px; }
             .category-score-value { font-size: 24px; }
@@ -237,14 +262,24 @@
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="header">
-                <h1>🌍 Scoped</h1>
-                <p>Sustainability Analysis Platform</p>
-            </div>
-            
-            <div class="controls">
-                <button class="btn btn-primary" id="location-btn">📍 Analyze My Location</button>
-                <button class="btn btn-secondary" id="help-btn">❓ How It Works</button>
-                <button class="btn btn-secondary" id="history-btn">📊 View History</button>
+                <div class="header-left">
+                    <h1>🌍 Scoped</h1>
+                    <p>Sustainability Analysis Platform</p>
+                </div>
+                <div class="header-buttons">
+                    <button class="icon-btn" id="location-btn">
+                        📍
+                        <div class="tooltip">Analyze My Location</div>
+                    </button>
+                    <button class="icon-btn" id="help-btn">
+                        ❓
+                        <div class="tooltip">How It Works</div>
+                    </button>
+                    <button class="icon-btn" id="history-btn">
+                        📊
+                        <div class="tooltip">View History</div>
+                    </button>
+                </div>
             </div>
             
             <div class="results" id="results">
