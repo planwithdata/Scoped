@@ -5,9 +5,10 @@ const API_CONFIG = {
     // OpenWeatherMap API Key
     OPENWEATHER_API_KEY: '85a2b8b250dae0e17ed6790a62aeb92c',
     
-    // Future API Keys (add as needed)
+    // Phase 2 API Keys
     NASA_POWER_API_KEY: null, // No key required for NASA POWER
     WORLD_BANK_API_KEY: null, // No key required for World Bank
+    IQAIR_API_KEY: null, // Get from https://www.iqair.com/air-pollution-data-api
     
     // Government API Keys (India-specific)
     CPCB_API_KEY: null, // Central Pollution Control Board
@@ -23,7 +24,11 @@ const API_CONFIG = {
         OVERPASS: 'https://overpass-api.de/api/interpreter',
         OPEN_ELEVATION: 'https://api.open-elevation.com/api/v1',
         NASA_POWER: 'https://power.larc.nasa.gov/api/temporal/daily/point',
-        WORLD_BANK_CLIMATE: 'https://climateknowledgeportal.worldbank.org/api'
+        WORLD_BANK_CLIMATE: 'https://climateknowledgeportal.worldbank.org/api',
+        IQAIR: 'https://api.airvisual.com/v2',
+        // Alternative AQI sources
+        WAQI: 'https://api.waqi.info/feed',
+        OPENAQ_V3: 'https://api.openaq.org/v3'
     }
 };
 

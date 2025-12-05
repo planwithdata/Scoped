@@ -92,6 +92,38 @@
             <div>Tests: Elevation above sea level</div>
             <div id="elevation-result"></div>
         </div>
+        
+        <h2>🚀 Phase 2 APIs</h2>
+        
+        <!-- NASA POWER API Test -->
+        <div class="test-card">
+            <div class="test-header">
+                <div class="test-title">☀️ NASA POWER API</div>
+                <button class="test-btn" onclick="testNASAPower()">Test</button>
+            </div>
+            <div>Tests: Solar radiation, climate data, agricultural metrics</div>
+            <div id="nasa-result"></div>
+        </div>
+        
+        <!-- World Bank Climate API Test -->
+        <div class="test-card">
+            <div class="test-header">
+                <div class="test-title">🌍 World Bank Climate Data</div>
+                <button class="test-btn" onclick="testWorldBank()">Test</button>
+            </div>
+            <div>Tests: Country-level climate indicators and environmental data</div>
+            <div id="worldbank-result"></div>
+        </div>
+        
+        <!-- Real AQI API Test -->
+        <div class="test-card">
+            <div class="test-header">
+                <div class="test-title">🌬️ Real AQI Data (IQAir)</div>
+                <button class="test-btn" onclick="testRealAQI()">Test</button>
+            </div>
+            <div>Tests: Real-time air quality from IQAir API (requires API key)</div>
+            <div id="realaqi-result"></div>
+        </div>
     </div>
 
     <script>
@@ -311,6 +343,101 @@
                 showResult('elevation-result', 'success', 'Elevation API test successful!', data.results[0]);
             } catch (error) {
                 showResult('elevation-result', 'error', `Elevation API test failed: ${error.message}`);
+            }
+        }
+        
+        async function testNASAPower() {
+            const { lat, lng } = getCoords();
+            showResult('nasa-result', 'loading', 'Testing NASA POWER API...');
+            
+            try {
+                // Get yesterday's date for recent data
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const dateStr = yesterday.toISOString().split('T')[0].replace(/-/g, '');
+                
+                const url = `https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M,RH2M,ALLSKY_SFC_SW_DWN&community=RE&longitude=${lng}&latitude=${lat}&start=${dateStr}&end=${dateStr}&format=JSON`;
+                
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const processedData = {
+                    temperature: data.properties?.parameter?.T2M?.[dateStr],
+                    humidity: data.properties?.parameter?.RH2M?.[dateStr],
+                    solarRadiation: data.properties?.parameter?.ALLSKY_SFC_SW_DWN?.[dateStr],
+                    location: `${lat}, ${lng}`,
+                    date: dateStr
+                };
+                
+                showResult('nasa-result', 'success', 'NASA POWER API test successful!', processedData);
+            } catch (error) {
+                showResult('nasa-result', 'error', `NASA POWER API test failed: ${error.message}`);
+            }
+        }
+        
+        async function testWorldBank() {
+            showResult('worldbank-result', 'loading', 'Testing World Bank Climate API...');
+            
+            try {
+                // Test with India's climate data
+                const response = await fetch('https://climateknowledgeportal.worldbank.org/api/country/IND/indicator/tas/annual');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const recentData = data.slice(-5); // Last 5 years
+                
+                const processedData = {
+                    country: 'India',
+                    indicator: 'Annual Temperature',
+                    recentYears: recentData.map(item => ({
+                        year: item.year,
+                        value: item.value
+                    })),
+                    dataPoints: data.length
+                };
+                
+                showResult('worldbank-result', 'success', 'World Bank Climate API test successful!', processedData);
+            } catch (error) {
+                showResult('worldbank-result', 'error', `World Bank Climate API test failed: ${error.message}`);
+            }
+        }
+        
+        async function testRealAQI() {
+            const { lat, lng } = getCoords();
+            showResult('realaqi-result', 'loading', 'Testing IQAir AQI API...');
+            
+            try {
+                // Note: IQAir requires API key, this will test the endpoint structure
+                const apiKey = 'demo'; // Replace with actual key
+                const response = await fetch(`https://api.airvisual.com/v2/nearest_city?lat=${lat}&lon=${lng}&key=${apiKey}`);
+                
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        throw new Error('API key required for IQAir. Get one from: https://www.iqair.com/air-pollution-data-api');
+                    }
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const aqiData = {
+                    city: data.data?.city,
+                    country: data.data?.country,
+                    aqi: data.data?.current?.pollution?.aqius,
+                    mainPollutant: data.data?.current?.pollution?.mainus,
+                    temperature: data.data?.current?.weather?.tp,
+                    humidity: data.data?.current?.weather?.hu
+                };
+                
+                showResult('realaqi-result', 'success', 'IQAir AQI API test successful!', aqiData);
+            } catch (error) {
+                showResult('realaqi-result', 'error', `IQAir AQI API test failed: ${error.message}`);
             }
         }
     </script>

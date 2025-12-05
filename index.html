@@ -211,6 +211,7 @@
         // Previous clicks storage
         let previousClicks = JSON.parse(localStorage.getItem('scopedClicks') || '[]');
         let showingPreviousClicks = false;
+        let previousClickMarkers = [];
         
         // Handle map clicks
         map.on('click', async (e) => {
@@ -223,14 +224,14 @@
                 // Fetch data with error handling and rate limiting
                 console.log('🚀 Starting comprehensive analysis...');
                 
-                const [greenData, airData, elevationData, weatherData] = await Promise.all([
+                const [greenData, airData, elevationData, weatherData, climateData] = await Promise.all([
                     fetchGreenSpaces(lat, lng).catch(err => {
                         console.error('❌ Green spaces failed:', err.message);
                         return { count: 0, types: [] };
                     }),
-                    fetchAirQuality(lat, lng).catch(err => {
-                        console.error('❌ Air quality failed:', err.message);
-                        return { value: null };
+                    fetchRealAQI(lat, lng).catch(err => {
+                        console.error('❌ Real AQI failed, using fallback:', err.message);
+                        return fetchAirQuality(lat, lng).catch(() => ({ value: null }));
                     }),
                     fetchElevation(lat, lng).catch(err => {
                         console.error('❌ Elevation failed:', err.message);
@@ -239,6 +240,10 @@
                     fetchWeather(lat, lng).catch(err => {
                         console.error('❌ Weather failed:', err.message);
                         return { temperature: null, humidity: null, uvIndex: null };
+                    }),
+                    fetchClimateData(lat, lng).catch(err => {
+                        console.error('❌ Climate data failed:', err.message);
+                        return { solarRadiation: null, climateComfort: null };
                     })
                 ]);
                 
@@ -272,7 +277,7 @@
                 });
 
                 // Calculate sustainability score (0-100)
-                const score = calculateSustainabilityScore(greenData, airData, elevationData, weatherData, healthcareData, educationData, transportData, servicesData);
+                const score = calculateSustainabilityScore(greenData, airData, elevationData, weatherData, climateData, healthcareData, educationData, transportData, servicesData);
                 
                 // Save to previous clicks
                 const clickData = {
@@ -285,6 +290,7 @@
                     elevation: elevationData?.elevation,
                     temperature: weatherData?.temperature,
                     humidity: weatherData?.humidity,
+                    solarRadiation: climateData?.solarRadiation,
                     healthcare: healthcareData?.total || 0,
                     education: educationData?.total || 0,
                     transport: transportData?.total || 0,
@@ -295,7 +301,7 @@
                 localStorage.setItem('scopedClicks', JSON.stringify(previousClicks));
                 
                 // Display results
-                displayResults(score, greenData, airData, elevationData, weatherData, healthcareData, educationData, transportData, servicesData, lat, lng);
+                displayResults(score, greenData, airData, elevationData, weatherData, climateData, healthcareData, educationData, transportData, servicesData, lat, lng);
                 updatePreviousClicksList();
                 
                 // Add popup on map
@@ -526,7 +532,90 @@
             }
         }
         
-        // Mock air quality based on location (since free APIs have limitations)
+        // Fetch real AQI data using IQAir API
+        async function fetchRealAQI(lat, lng) {
+            console.log('🌬️ Fetching real AQI data for:', lat, lng);
+            
+            try {
+                const apiKey = API_CONFIG.IQAIR_API_KEY;
+                if (!apiKey) {
+                    console.warn('⚠️ IQAir API key not configured, using fallback');
+                    throw new Error('IQAir API key required');
+                }
+                
+                const url = `${API_CONFIG.ENDPOINTS.IQAIR}/nearest_city?lat=${lat}&lon=${lng}&key=${apiKey}`;
+                console.log('📡 IQAir request:', url);
+                
+                const response = await fetch(url);
+                console.log('📊 IQAir response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`IQAir API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('✅ IQAir data received:', data);
+                
+                if (data.status !== 'success' || !data.data) {
+                    throw new Error('Invalid IQAir response');
+                }
+                
+                const aqi = data.data.current?.pollution?.aqius || null;
+                console.log('🎯 Real AQI value:', aqi);
+                
+                return { 
+                    value: aqi,
+                    source: 'IQAir',
+                    city: data.data.city,
+                    country: data.data.country
+                };
+                
+            } catch (error) {
+                console.error('💥 IQAir fetch error:', error.message);
+                throw error; // Re-throw to trigger fallback
+            }
+        }
+        
+        // Fetch climate data using NASA POWER API
+        async function fetchClimateData(lat, lng) {
+            console.log('☀️ Fetching climate data for:', lat, lng);
+            
+            try {
+                // Get yesterday's date for recent data
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const dateStr = yesterday.toISOString().split('T')[0].replace(/-/g, '');
+                
+                const url = `${API_CONFIG.ENDPOINTS.NASA_POWER}?parameters=T2M,RH2M,ALLSKY_SFC_SW_DWN&community=RE&longitude=${lng}&latitude=${lat}&start=${dateStr}&end=${dateStr}&format=JSON`;
+                console.log('📡 NASA POWER request:', url);
+                
+                const response = await fetch(url);
+                console.log('📊 NASA POWER response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`NASA POWER API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('✅ NASA POWER data received:', data);
+                
+                const climateInfo = {
+                    solarRadiation: data.properties?.parameter?.ALLSKY_SFC_SW_DWN?.[dateStr] || null,
+                    nasaTemperature: data.properties?.parameter?.T2M?.[dateStr] || null,
+                    nasaHumidity: data.properties?.parameter?.RH2M?.[dateStr] || null,
+                    date: dateStr
+                };
+                
+                console.log('🎯 Climate data processed:', climateInfo);
+                return climateInfo;
+                
+            } catch (error) {
+                console.error('💥 NASA POWER fetch error:', error.message);
+                return { solarRadiation: null, climateComfort: null };
+            }
+        }
+        
+        // Mock air quality based on location (fallback when real AQI fails)
         async function fetchAQI(lat, lon) {
           console.log('🌬️ Generating air quality data for:', lat, lon);
           
@@ -579,7 +668,7 @@
         }
 
         // Calculate sustainability score using percentile-based system (0-100)
-        function calculateSustainabilityScore(greenData, airData, elevationData, weatherData = {}, healthcareData = {total: 0}, educationData = {total: 0}, transportData = {total: 0}, servicesData = {total: 0}) {
+        function calculateSustainabilityScore(greenData, airData, elevationData, weatherData = {}, climateData = {}, healthcareData = {total: 0}, educationData = {total: 0}, transportData = {total: 0}, servicesData = {total: 0}) {
             // Baseline values for 100th percentile (perfect score)
             const PERFECT_GREEN_SPACES = 15;  // 15+ green features within 1km
             const PERFECT_AQI = 25;           // AQI of 25 (excellent)
@@ -633,6 +722,19 @@
             totalScore += weatherScore;
             console.log(`🌤️ Weather score: ${weatherScore.toFixed(1)} (temp: ${temperature}°C, humidity: ${humidity}%)`);
             
+            // Climate/Solar score (5% weight)
+            let climateScore = 0;
+            const solarRadiation = climateData?.solarRadiation;
+            
+            if (solarRadiation !== null && solarRadiation !== undefined) {
+                // Solar radiation scoring (0-5 points) - higher is better for sustainability
+                const solarScore = Math.min(solarRadiation / 8, 5); // 8 kWh/m²/day = max score
+                climateScore += solarScore;
+            }
+            
+            totalScore += climateScore;
+            console.log(`☀️ Climate score: ${climateScore.toFixed(1)} (solar: ${solarRadiation} kWh/m²/day)`);
+            
             // Healthcare access score (15% weight)
             const healthcarePercentile = Math.min((healthcareData?.total || 0) / PERFECT_HEALTHCARE, 1);
             const healthcareScore = healthcarePercentile * 15;
@@ -681,10 +783,12 @@
                 btn.classList.add('active');
                 btn.textContent = '👁️ Hide Previous Clicks';
                 updatePreviousClicksList();
+                showPreviousClicksOnMap();
             } else {
                 clicksDiv.style.display = 'none';
                 btn.classList.remove('active');
                 btn.textContent = '👁️ Show Previous Clicks';
+                hidePreviousClicksOnMap();
             }
         });
         
@@ -741,12 +845,72 @@
             map.flyTo({ center: [lng, lat], zoom: 12 });
         }
         
+        function showPreviousClicksOnMap() {
+            console.log('🗺️ Showing previous clicks on map:', previousClicks.length);
+            
+            previousClicks.forEach((click, index) => {
+                const lat = parseFloat(click.lat);
+                const lng = parseFloat(click.lng);
+                
+                // Create marker element
+                const markerEl = document.createElement('div');
+                markerEl.className = 'previous-click-marker';
+                markerEl.style.cssText = `
+                    width: 25px;
+                    height: 25px;
+                    border-radius: 50%;
+                    background: ${click.score > 70 ? '#4CAF50' : click.score > 40 ? '#FF9800' : '#F44336'};
+                    border: 2px solid white;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-size: 10px;
+                    font-weight: bold;
+                `;
+                markerEl.textContent = click.score;
+                
+                // Create marker
+                const marker = new maplibregl.Marker(markerEl)
+                    .setLngLat([lng, lat])
+                    .addTo(map);
+                
+                // Add popup
+                const popup = new maplibregl.Popup({ offset: 25 })
+                    .setHTML(`
+                        <div style="text-align: center;">
+                            <strong>Score: ${click.score}/100</strong><br>
+                            <small>${click.lat}, ${click.lng}</small><br>
+                            <small>${click.timestamp}</small>
+                        </div>
+                    `);
+                
+                markerEl.addEventListener('click', () => {
+                    popup.addTo(map).setLngLat([lng, lat]);
+                });
+                
+                previousClickMarkers.push(marker);
+            });
+        }
+        
+        function hidePreviousClicksOnMap() {
+            console.log('🗺️ Hiding previous clicks from map');
+            
+            previousClickMarkers.forEach(marker => {
+                marker.remove();
+            });
+            previousClickMarkers = [];
+        }
+        
         // Display results in sidebar
-        function displayResults(score, greenData, airData, elevationData, weatherData = {}, healthcareData = {}, educationData = {}, transportData = {}, servicesData = {}, lat, lng) {
+        function displayResults(score, greenData, airData, elevationData, weatherData = {}, climateData = {}, healthcareData = {}, educationData = {}, transportData = {}, servicesData = {}, lat, lng) {
             const aqi = airData?.value;
             const elevation = elevationData?.elevation;
             const temperature = weatherData?.temperature;
             const humidity = weatherData?.humidity;
+            const solarRadiation = climateData?.solarRadiation;
             
             document.getElementById('results').innerHTML = `
                 <div class="score" style="color: ${score > 70 ? '#4CAF50' : score > 40 ? '#FF9800' : '#F44336'}">
@@ -792,14 +956,26 @@
                 </div>
                 
                 <div class="metric-card">
+                    <div class="metric-title">☀️ Climate</div>
+                    <p><strong>Solar:</strong> ${solarRadiation ? solarRadiation.toFixed(1) + ' kWh/m²/day' : 'No data'}</p>
+                    <p style="font-size: 12px; opacity: 0.8;">Source: NASA POWER satellite data</p>
+                </div>
+                
+                <div class="metric-card">
                     <div class="metric-title">🌬️ Air Quality</div>
                     <p><strong>AQI:</strong> ${aqi || 'No data'}</p>
                     ${aqi ? `<p style="color: ${aqi <= 50 ? '#4CAF50' : aqi <= 100 ? '#FF9800' : aqi <= 150 ? '#FF5722' : aqi <= 200 ? '#F44336' : aqi <= 300 ? '#9C27B0' : '#8D6E63'}; font-weight: 500; font-size: 12px;">${aqi <= 50 ? 'Good' : aqi <= 100 ? 'Moderate' : aqi <= 150 ? 'Unhealthy for Sensitive' : aqi <= 200 ? 'Unhealthy' : aqi <= 300 ? 'Very Unhealthy' : 'Hazardous'}</p>` : ''}
+                    ${airData?.source ? `<p style="font-size: 12px; opacity: 0.8;">Source: ${airData.source}</p>` : ''}
                 </div>
             `;
         }
         // Initialize previous clicks on load
         updatePreviousClicksList();
+        
+        // Show previous clicks on map if toggle is active
+        if (showingPreviousClicks) {
+            showPreviousClicksOnMap();
+        }
         
         // Close popups when clicking outside
         document.addEventListener('click', (e) => {
