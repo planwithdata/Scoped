@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scoped API Test Framework</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .test-card { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .test-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .test-title { font-size: 18px; font-weight: bold; }
+        .test-btn { padding: 8px 16px; background: #007cbf; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .test-btn:hover { background: #005a8b; }
+        .test-btn:disabled { background: #ccc; cursor: not-allowed; }
+        .result { margin-top: 15px; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .loading { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .coords { margin: 10px 0; }
+        .coords input { padding: 5px; margin: 0 5px; width: 100px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Scoped API Test Framework</h1>
+        <p>Test individual APIs before integrating into the main app</p>
+        
+        <div class="coords">
+            <label>Test Coordinates:</label>
+            <input type="number" id="testLat" value="28.6" step="0.0001" placeholder="Latitude">
+            <input type="number" id="testLng" value="77.2" step="0.0001" placeholder="Longitude">
+        </div>
+        
+        <!-- Healthcare API Test -->
+        <div class="test-card">
+            <div class="test-header">
+                <div class="test-title">🏥 Healthcare Facilities (Overpass API)</div>
+                <button class="test-btn" onclick="testHealthcare()">Test</button>
+            </div>
+            <div>Tests: Hospitals, clinics, pharmacies within 2km radius</div>
+            <div id="healthcare-result"></div>
+        </div>
+        
+        <!-- Education API Test -->
+        <div class="test-card">
+            <div class="test-header">
+                <div class="test-title">🏫 Education Facilities (Overpass API)</div>
+                <button class="test-btn" onclick="testEducation()">Test</button>
+            </div>
+            <div>Tests: Schools, colleges, universities, libraries within 2km radius</div>
+            <div id="education-result"></div>
+        </div>
+        
+        <!-- Transport API Test -->
+        <div class="test-card">
+            <div class="test-header">
+                <div class="test-title">🚌 Public Transport (Overpass API)</div>
+                <button class="test-btn" onclick="testTransport()">Test</button>
+            </div>
+            <div>Tests: Bus stops, railway stations within 1.5km radius</div>
+            <div id="transport-result"></div>
+        </div>
+        
+        <!-- Services API Test -->
+        <div class="test-card">
+            <div class="test-header">
+                <div class="test-title">🏦 Essential Services (Overpass API)</div>
+                <button class="test-btn" onclick="testServices()">Test</button>
+            </div>
+            <div>Tests: Banks, ATMs, markets, police stations within 1.5km radius</div>
+            <div id="services-result"></div>
+        </div>
+        
+        <!-- Weather API Test -->
+        <div class="test-card">
+            <div class="test-header">
+                <div class="test-title">🌤️ Weather Data (OpenWeatherMap)</div>
+                <button class="test-btn" onclick="testWeather()">Test</button>
+            </div>
+            <div>Tests: Current weather, temperature, humidity (requires API key)</div>
+            <div id="weather-result"></div>
+        </div>
+        
+        <!-- Elevation API Test -->
+        <div class="test-card">
+            <div class="test-header">
+                <div class="test-title">⛰️ Elevation Data (Open-Elevation)</div>
+                <button class="test-btn" onclick="testElevation()">Test</button>
+            </div>
+            <div>Tests: Elevation above sea level</div>
+            <div id="elevation-result"></div>
+        </div>
+    </div>
+
+    <script>
+        function getCoords() {
+            return {
+                lat: parseFloat(document.getElementById('testLat').value),
+                lng: parseFloat(document.getElementById('testLng').value)
+            };
+        }
+        
+        function showResult(elementId, status, message, data = null) {
+            const element = document.getElementById(elementId);
+            const className = status === 'loading' ? 'loading' : status === 'success' ? 'success' : 'error';
+            const content = data ? `${message}\n\nData: ${JSON.stringify(data, null, 2)}` : message;
+            element.innerHTML = `<div class="result ${className}">${content}</div>`;
+        }
+        
+        async function testHealthcare() {
+            const { lat, lng } = getCoords();
+            showResult('healthcare-result', 'loading', 'Testing healthcare facilities...');
+            
+            try {
+                const query = `
+                    [out:json][timeout:15];
+                    (
+                      node["amenity"="hospital"](around:2000,${lat},${lng});
+                      node["amenity"="clinic"](around:2000,${lat},${lng});
+                      node["amenity"="pharmacy"](around:2000,${lat},${lng});
+                    );
+                    out;
+                `;
+                
+                const response = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    body: query
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const facilities = {
+                    hospitals: data.elements.filter(el => el.tags?.amenity === 'hospital').length,
+                    clinics: data.elements.filter(el => el.tags?.amenity === 'clinic').length,
+                    pharmacies: data.elements.filter(el => el.tags?.amenity === 'pharmacy').length,
+                    total: data.elements.length
+                };
+                
+                showResult('healthcare-result', 'success', 'Healthcare API test successful!', facilities);
+            } catch (error) {
+                showResult('healthcare-result', 'error', `Healthcare API test failed: ${error.message}`);
+            }
+        }
+        
+        async function testEducation() {
+            const { lat, lng } = getCoords();
+            showResult('education-result', 'loading', 'Testing education facilities...');
+            
+            try {
+                const query = `
+                    [out:json][timeout:15];
+                    (
+                      node["amenity"="school"](around:2000,${lat},${lng});
+                      node["amenity"="college"](around:2000,${lat},${lng});
+                      node["amenity"="university"](around:2000,${lat},${lng});
+                      node["amenity"="library"](around:2000,${lat},${lng});
+                    );
+                    out;
+                `;
+                
+                const response = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    body: query
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const facilities = {
+                    schools: data.elements.filter(el => el.tags?.amenity === 'school').length,
+                    colleges: data.elements.filter(el => el.tags?.amenity === 'college').length,
+                    universities: data.elements.filter(el => el.tags?.amenity === 'university').length,
+                    libraries: data.elements.filter(el => el.tags?.amenity === 'library').length,
+                    total: data.elements.length
+                };
+                
+                showResult('education-result', 'success', 'Education API test successful!', facilities);
+            } catch (error) {
+                showResult('education-result', 'error', `Education API test failed: ${error.message}`);
+            }
+        }
+        
+        async function testTransport() {
+            const { lat, lng } = getCoords();
+            showResult('transport-result', 'loading', 'Testing transport facilities...');
+            
+            try {
+                const query = `
+                    [out:json][timeout:15];
+                    (
+                      node["highway"="bus_stop"](around:1500,${lat},${lng});
+                      node["railway"="station"](around:1500,${lat},${lng});
+                      node["public_transport"="station"](around:1500,${lat},${lng});
+                    );
+                    out;
+                `;
+                
+                const response = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    body: query
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const facilities = {
+                    busStops: data.elements.filter(el => el.tags?.highway === 'bus_stop').length,
+                    stations: data.elements.filter(el => el.tags?.railway === 'station' || el.tags?.public_transport === 'station').length,
+                    total: data.elements.length
+                };
+                
+                showResult('transport-result', 'success', 'Transport API test successful!', facilities);
+            } catch (error) {
+                showResult('transport-result', 'error', `Transport API test failed: ${error.message}`);
+            }
+        }
+        
+        async function testServices() {
+            const { lat, lng } = getCoords();
+            showResult('services-result', 'loading', 'Testing essential services...');
+            
+            try {
+                const query = `
+                    [out:json][timeout:15];
+                    (
+                      node["amenity"="bank"](around:1500,${lat},${lng});
+                      node["amenity"="atm"](around:1500,${lat},${lng});
+                      node["shop"="supermarket"](around:1500,${lat},${lng});
+                      node["amenity"="police"](around:1500,${lat},${lng});
+                    );
+                    out;
+                `;
+                
+                const response = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    body: query
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const facilities = {
+                    banks: data.elements.filter(el => el.tags?.amenity === 'bank').length,
+                    atms: data.elements.filter(el => el.tags?.amenity === 'atm').length,
+                    markets: data.elements.filter(el => el.tags?.shop === 'supermarket').length,
+                    police: data.elements.filter(el => el.tags?.amenity === 'police').length,
+                    total: data.elements.length
+                };
+                
+                showResult('services-result', 'success', 'Services API test successful!', facilities);
+            } catch (error) {
+                showResult('services-result', 'error', `Services API test failed: ${error.message}`);
+            }
+        }
+        
+        async function testWeather() {
+            const { lat, lng } = getCoords();
+            showResult('weather-result', 'loading', 'Testing weather API...');
+            
+            try {
+                // Using free tier without API key (limited functionality)
+                const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&appid=demo`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText} - Need valid API key`);
+                }
+                
+                const data = await response.json();
+                showResult('weather-result', 'success', 'Weather API test successful!', data);
+            } catch (error) {
+                showResult('weather-result', 'error', `Weather API test failed: ${error.message}`);
+            }
+        }
+        
+        async function testElevation() {
+            const { lat, lng } = getCoords();
+            showResult('elevation-result', 'loading', 'Testing elevation API...');
+            
+            try {
+                const response = await fetch(`https://api.open-elevation.com/api/v1/lookup?locations=${lat},${lng}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                showResult('elevation-result', 'success', 'Elevation API test successful!', data.results[0]);
+            } catch (error) {
+                showResult('elevation-result', 'error', `Elevation API test failed: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>
