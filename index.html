@@ -288,6 +288,7 @@
             
             <div class="results" id="results">
                 <div class="loading-state">
+                    <button class="btn btn-primary" id="analyze-location-btn" style="margin-bottom: 20px;">📍 Analyze My Location</button>
                     <div style="font-size: 48px; margin-bottom: 20px;">🗺️</div>
                     <h3>Click anywhere on the map</h3>
                     <p>Get instant sustainability insights for any location worldwide</p>
@@ -390,6 +391,36 @@
                 });
             }
         });
+        
+        document.getElementById('analyze-location-btn').addEventListener('click', () => {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    const lng = position.coords.longitude;
+                    const lat = position.coords.latitude;
+                    
+                    // Fly to location
+                    map.flyTo({
+                        center: [lng, lat],
+                        zoom: 12
+                    });
+                    
+                    // Trigger analysis after a short delay to let map settle
+                    setTimeout(() => {
+                        // Simulate map click event
+                        const clickEvent = {
+                            lngLat: { lng, lat }
+                        };
+                        
+                        // Call the same analysis function as map click
+                        analyzeLocation(clickEvent);
+                    }, 1000);
+                }, (error) => {
+                    alert('Unable to get your location. Please ensure location services are enabled.');
+                });
+            } else {
+                alert('Geolocation is not supported by this browser.');
+            }
+        });
 
         document.getElementById('help-btn').addEventListener('click', () => {
             document.getElementById('help-popup').style.display = 'flex';
@@ -404,8 +435,8 @@
             document.getElementById('basemap-popup').style.display = 'flex';
         });
 
-        // Map click handler
-        map.on('click', async (e) => {
+        // Analysis function (shared by map click and analyze location button)
+        async function analyzeLocation(e) {
             const { lng, lat } = e.lngLat;
             
             // Show loading
@@ -552,7 +583,10 @@
                     </div>
                 `;
             }
-        });
+        }
+        
+        // Map click handler
+        map.on('click', analyzeLocation);
 
         // Display results function with all scores
         function displayResults(scores, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, businessData, climateResilienceData, lat, lng) {
