@@ -140,23 +140,26 @@
                 </ul>
                 
                 <p><strong>Sustainability Score Calculation (0-100):</strong></p>
-                <p><em>Comprehensive scoring across 7 categories:</em></p>
+                <p><em>Comprehensive scoring across 8 categories:</em></p>
                 <ul>
                     <li><strong>Green Spaces (20%):</strong> 15+ parks/forests within 1km</li>
-                    <li><strong>Air Quality (20%):</strong> AQI scale from excellent (25) to hazardous (200+)</li>
+                    <li><strong>Air Quality (20%):</strong> Real-time AQI from OpenWeatherMap</li>
                     <li><strong>Weather (10%):</strong> Temperature ~25°C, humidity ~50%</li>
+                    <li><strong>Climate (5%):</strong> Solar radiation potential from NASA</li>
                     <li><strong>Healthcare (15%):</strong> 10+ hospitals/clinics within 2km</li>
                     <li><strong>Education (10%):</strong> 8+ schools/colleges within 2km</li>
                     <li><strong>Transport (15%):</strong> 15+ bus stops/stations within 1.5km</li>
                     <li><strong>Services (10%):</strong> 20+ banks/markets/police within 1.5km</li>
                 </ul>
-                <p><strong>Perfect Score (100):</strong> Optimal levels in all 7 categories</p>
+                <p><strong>Perfect Score (100):</strong> Optimal levels in all 8 categories</p>
                 
                 <p><strong>Data Sources:</strong></p>
                 <ul>
-                    <li>Green spaces: OpenStreetMap via Overpass API</li>
-                    <li>Air quality: Estimated based on location</li>
-                    <li>Elevation: Open-Elevation API</li>
+                    <li>Infrastructure: OpenStreetMap via Overpass API</li>
+                    <li>Air quality: OpenWeatherMap Air Pollution API</li>
+                    <li>Weather: OpenWeatherMap Current Weather API</li>
+                    <li>Climate: NASA POWER satellite data</li>
+                    <li>Elevation: Open-Elevation API (SRTM data)</li>
                 </ul>
             </div>
         </div>
@@ -532,46 +535,68 @@
             }
         }
         
-        // Fetch real AQI data using IQAir API
+        // Fetch real AQI data using OpenWeatherMap Air Pollution API
         async function fetchRealAQI(lat, lng) {
             console.log('🌬️ Fetching real AQI data for:', lat, lng);
             
             try {
-                const apiKey = API_CONFIG.IQAIR_API_KEY;
+                const apiKey = API_CONFIG.OPENWEATHER_API_KEY;
                 if (!apiKey) {
-                    console.warn('⚠️ IQAir API key not configured, using fallback');
-                    throw new Error('IQAir API key required');
+                    console.warn('⚠️ OpenWeatherMap API key not configured');
+                    throw new Error('OpenWeatherMap API key required');
                 }
                 
-                const url = `${API_CONFIG.ENDPOINTS.IQAIR}/nearest_city?lat=${lat}&lon=${lng}&key=${apiKey}`;
-                console.log('📡 IQAir request:', url);
+                const url = `${API_CONFIG.ENDPOINTS.OPENWEATHER}/air_pollution?lat=${lat}&lon=${lng}&appid=${apiKey}`;
+                console.log('📡 OpenWeatherMap Air Pollution request:', url);
                 
                 const response = await fetch(url);
-                console.log('📊 IQAir response status:', response.status);
+                console.log('📊 OpenWeatherMap Air Pollution response status:', response.status);
                 
                 if (!response.ok) {
-                    throw new Error(`IQAir API error: ${response.status}`);
+                    throw new Error(`OpenWeatherMap Air Pollution API error: ${response.status}`);
                 }
                 
                 const data = await response.json();
-                console.log('✅ IQAir data received:', data);
+                console.log('✅ OpenWeatherMap Air Pollution data received:', data);
                 
-                if (data.status !== 'success' || !data.data) {
-                    throw new Error('Invalid IQAir response');
+                if (!data.list || data.list.length === 0) {
+                    throw new Error('No air pollution data available');
                 }
                 
-                const aqi = data.data.current?.pollution?.aqius || null;
-                console.log('🎯 Real AQI value:', aqi);
+                const pollution = data.list[0];
+                const aqi = pollution.main?.aqi; // 1=Good, 2=Fair, 3=Moderate, 4=Poor, 5=Very Poor
+                const components = pollution.components;
                 
-                return { 
-                    value: aqi,
-                    source: 'IQAir',
-                    city: data.data.city,
-                    country: data.data.country
+                // Convert OpenWeatherMap AQI (1-5) to US AQI scale (0-500)
+                const aqiMapping = {
+                    1: 25,   // Good (0-50)
+                    2: 75,   // Fair (51-100)
+                    3: 125,  // Moderate (101-150)
+                    4: 175,  // Poor (151-200)
+                    5: 250   // Very Poor (201-300)
+                };
+                
+                const usAqi = aqiMapping[aqi] || null;
+                console.log('🎯 OpenWeatherMap AQI converted:', aqi, '->', usAqi);
+                
+                return {
+                    value: usAqi,
+                    source: 'OpenWeatherMap',
+                    rawAqi: aqi,
+                    components: {
+                        co: components?.co,      // Carbon monoxide
+                        no: components?.no,      // Nitric oxide
+                        no2: components?.no2,    // Nitrogen dioxide
+                        o3: components?.o3,      // Ozone
+                        so2: components?.so2,    // Sulphur dioxide
+                        pm2_5: components?.pm2_5, // PM2.5
+                        pm10: components?.pm10,   // PM10
+                        nh3: components?.nh3     // Ammonia
+                    }
                 };
                 
             } catch (error) {
-                console.error('💥 IQAir fetch error:', error.message);
+                console.error('💥 OpenWeatherMap Air Pollution fetch error:', error.message);
                 throw error; // Re-throw to trigger fallback
             }
         }
@@ -581,10 +606,10 @@
             console.log('☀️ Fetching climate data for:', lat, lng);
             
             try {
-                // Get yesterday's date for recent data
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                const dateStr = yesterday.toISOString().split('T')[0].replace(/-/g, '');
+                // Use a date from a week ago to ensure data availability
+                const testDate = new Date();
+                testDate.setDate(testDate.getDate() - 7);
+                const dateStr = testDate.toISOString().split('T')[0].replace(/-/g, '');
                 
                 const url = `${API_CONFIG.ENDPOINTS.NASA_POWER}?parameters=T2M,RH2M,ALLSKY_SFC_SW_DWN&community=RE&longitude=${lng}&latitude=${lat}&start=${dateStr}&end=${dateStr}&format=JSON`;
                 console.log('📡 NASA POWER request:', url);
@@ -599,10 +624,15 @@
                 const data = await response.json();
                 console.log('✅ NASA POWER data received:', data);
                 
+                // NASA returns -999 for missing data, filter these out
+                const solar = data.properties?.parameter?.ALLSKY_SFC_SW_DWN?.[dateStr];
+                const temp = data.properties?.parameter?.T2M?.[dateStr];
+                const humidity = data.properties?.parameter?.RH2M?.[dateStr];
+                
                 const climateInfo = {
-                    solarRadiation: data.properties?.parameter?.ALLSKY_SFC_SW_DWN?.[dateStr] || null,
-                    nasaTemperature: data.properties?.parameter?.T2M?.[dateStr] || null,
-                    nasaHumidity: data.properties?.parameter?.RH2M?.[dateStr] || null,
+                    solarRadiation: (solar && solar !== -999) ? solar : null,
+                    nasaTemperature: (temp && temp !== -999) ? temp : null,
+                    nasaHumidity: (humidity && humidity !== -999) ? humidity : null,
                     date: dateStr
                 };
                 
@@ -966,6 +996,7 @@
                     <p><strong>AQI:</strong> ${aqi || 'No data'}</p>
                     ${aqi ? `<p style="color: ${aqi <= 50 ? '#4CAF50' : aqi <= 100 ? '#FF9800' : aqi <= 150 ? '#FF5722' : aqi <= 200 ? '#F44336' : aqi <= 300 ? '#9C27B0' : '#8D6E63'}; font-weight: 500; font-size: 12px;">${aqi <= 50 ? 'Good' : aqi <= 100 ? 'Moderate' : aqi <= 150 ? 'Unhealthy for Sensitive' : aqi <= 200 ? 'Unhealthy' : aqi <= 300 ? 'Very Unhealthy' : 'Hazardous'}</p>` : ''}
                     ${airData?.source ? `<p style="font-size: 12px; opacity: 0.8;">Source: ${airData.source}</p>` : ''}
+                    ${airData?.components?.pm2_5 ? `<p style="font-size: 12px; opacity: 0.8;">PM2.5: ${airData.components.pm2_5.toFixed(1)} μg/m³</p>` : ''}
                 </div>
             `;
         }

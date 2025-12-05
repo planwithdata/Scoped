@@ -118,11 +118,21 @@
         <!-- Real AQI API Test -->
         <div class="test-card">
             <div class="test-header">
-                <div class="test-title">🌬️ Real AQI Data (IQAir)</div>
+                <div class="test-title">🌬️ Real AQI Data (OpenWeatherMap)</div>
                 <button class="test-btn" onclick="testRealAQI()">Test</button>
             </div>
-            <div>Tests: Real-time air quality from IQAir API (requires API key)</div>
+            <div>Tests: Real-time air quality from OpenWeatherMap Air Pollution API</div>
             <div id="realaqi-result"></div>
+        </div>
+        
+        <!-- Air Pollution History Test -->
+        <div class="test-card">
+            <div class="test-header">
+                <div class="test-title">📈 Air Pollution History (OpenWeatherMap)</div>
+                <button class="test-btn" onclick="testAirPollutionHistory()">Test</button>
+            </div>
+            <div>Tests: Historical air pollution data (last 7 days)</div>
+            <div id="airhistory-result"></div>
         </div>
     </div>
 
@@ -351,12 +361,14 @@
             showResult('nasa-result', 'loading', 'Testing NASA POWER API...');
             
             try {
-                // Get yesterday's date for recent data
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                const dateStr = yesterday.toISOString().split('T')[0].replace(/-/g, '');
+                // Use a date from a few days ago to ensure data availability
+                const testDate = new Date();
+                testDate.setDate(testDate.getDate() - 7); // 7 days ago
+                const dateStr = testDate.toISOString().split('T')[0].replace(/-/g, '');
                 
                 const url = `https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M,RH2M,ALLSKY_SFC_SW_DWN&community=RE&longitude=${lng}&latitude=${lat}&start=${dateStr}&end=${dateStr}&format=JSON`;
+                
+                console.log('NASA POWER URL:', url);
                 
                 const response = await fetch(url);
                 
@@ -365,12 +377,20 @@
                 }
                 
                 const data = await response.json();
+                console.log('NASA POWER raw response:', data);
+                
+                // Check for valid data (NASA returns -999 for missing data)
+                const temp = data.properties?.parameter?.T2M?.[dateStr];
+                const humidity = data.properties?.parameter?.RH2M?.[dateStr];
+                const solar = data.properties?.parameter?.ALLSKY_SFC_SW_DWN?.[dateStr];
+                
                 const processedData = {
-                    temperature: data.properties?.parameter?.T2M?.[dateStr],
-                    humidity: data.properties?.parameter?.RH2M?.[dateStr],
-                    solarRadiation: data.properties?.parameter?.ALLSKY_SFC_SW_DWN?.[dateStr],
+                    temperature: (temp && temp !== -999) ? temp : 'No data',
+                    humidity: (humidity && humidity !== -999) ? humidity : 'No data',
+                    solarRadiation: (solar && solar !== -999) ? solar : 'No data',
                     location: `${lat}, ${lng}`,
-                    date: dateStr
+                    date: dateStr,
+                    note: 'NASA POWER provides global climate data with some gaps'
                 };
                 
                 showResult('nasa-result', 'success', 'NASA POWER API test successful!', processedData);
@@ -383,61 +403,139 @@
             showResult('worldbank-result', 'loading', 'Testing World Bank Climate API...');
             
             try {
-                // Test with India's climate data
-                const response = await fetch('https://climateknowledgeportal.worldbank.org/api/country/IND/indicator/tas/annual');
+                // World Bank API has CORS issues from browser, test with a simpler endpoint
+                const response = await fetch('https://api.worldbank.org/v2/country/IND/indicator/EN.ATM.CO2E.PC?format=json&date=2020');
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
                 const data = await response.json();
-                const recentData = data.slice(-5); // Last 5 years
                 
-                const processedData = {
-                    country: 'India',
-                    indicator: 'Annual Temperature',
-                    recentYears: recentData.map(item => ({
-                        year: item.year,
-                        value: item.value
-                    })),
-                    dataPoints: data.length
-                };
-                
-                showResult('worldbank-result', 'success', 'World Bank Climate API test successful!', processedData);
+                if (data && data.length > 1 && data[1].length > 0) {
+                    const processedData = {
+                        country: data[1][0].country.value,
+                        indicator: data[1][0].indicator.value,
+                        year: data[1][0].date,
+                        value: data[1][0].value,
+                        note: 'World Bank provides country-level environmental indicators'
+                    };
+                    
+                    showResult('worldbank-result', 'success', 'World Bank API test successful!', processedData);
+                } else {
+                    throw new Error('No data returned from World Bank API');
+                }
             } catch (error) {
-                showResult('worldbank-result', 'error', `World Bank Climate API test failed: ${error.message}`);
+                // World Bank API often has CORS issues from browsers
+                showResult('worldbank-result', 'error', `World Bank API test failed: ${error.message}. Note: This API often requires server-side access due to CORS restrictions.`);
             }
         }
         
         async function testRealAQI() {
             const { lat, lng } = getCoords();
-            showResult('realaqi-result', 'loading', 'Testing IQAir AQI API...');
+            showResult('realaqi-result', 'loading', 'Testing OpenWeatherMap Air Pollution API...');
             
             try {
-                // Note: IQAir requires API key, this will test the endpoint structure
-                const apiKey = 'demo'; // Replace with actual key
-                const response = await fetch(`https://api.airvisual.com/v2/nearest_city?lat=${lat}&lon=${lng}&key=${apiKey}`);
+                const apiKey = API_CONFIG.OPENWEATHER_API_KEY;
+                if (!apiKey) {
+                    throw new Error('OpenWeatherMap API key not configured in config.js');
+                }
+                
+                const response = await fetch(`${API_CONFIG.ENDPOINTS.OPENWEATHER}/air_pollution?lat=${lat}&lon=${lng}&appid=${apiKey}`);
                 
                 if (!response.ok) {
-                    if (response.status === 401) {
-                        throw new Error('API key required for IQAir. Get one from: https://www.iqair.com/air-pollution-data-api');
-                    }
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
                 const data = await response.json();
-                const aqiData = {
-                    city: data.data?.city,
-                    country: data.data?.country,
-                    aqi: data.data?.current?.pollution?.aqius,
-                    mainPollutant: data.data?.current?.pollution?.mainus,
-                    temperature: data.data?.current?.weather?.tp,
-                    humidity: data.data?.current?.weather?.hu
+                
+                if (!data.list || data.list.length === 0) {
+                    throw new Error('No air pollution data available');
+                }
+                
+                const pollution = data.list[0];
+                const aqi = pollution.main?.aqi;
+                const components = pollution.components;
+                
+                // Convert OpenWeatherMap AQI (1-5) to descriptive and US AQI
+                const aqiDescriptions = {
+                    1: { desc: 'Good', usAqi: 25 },
+                    2: { desc: 'Fair', usAqi: 75 },
+                    3: { desc: 'Moderate', usAqi: 125 },
+                    4: { desc: 'Poor', usAqi: 175 },
+                    5: { desc: 'Very Poor', usAqi: 250 }
                 };
                 
-                showResult('realaqi-result', 'success', 'IQAir AQI API test successful!', aqiData);
+                const aqiInfo = aqiDescriptions[aqi] || { desc: 'Unknown', usAqi: null };
+                
+                const aqiData = {
+                    source: 'OpenWeatherMap Air Pollution API',
+                    rawAqi: aqi,
+                    aqiDescription: aqiInfo.desc,
+                    convertedUsAqi: aqiInfo.usAqi,
+                    components: {
+                        'CO (Carbon Monoxide)': components?.co + ' μg/m³',
+                        'NO2 (Nitrogen Dioxide)': components?.no2 + ' μg/m³',
+                        'O3 (Ozone)': components?.o3 + ' μg/m³',
+                        'SO2 (Sulphur Dioxide)': components?.so2 + ' μg/m³',
+                        'PM2.5': components?.pm2_5 + ' μg/m³',
+                        'PM10': components?.pm10 + ' μg/m³',
+                        'NH3 (Ammonia)': components?.nh3 + ' μg/m³'
+                    },
+                    timestamp: new Date(pollution.dt * 1000).toLocaleString()
+                };
+                
+                showResult('realaqi-result', 'success', 'OpenWeatherMap Air Pollution API test successful!', aqiData);
             } catch (error) {
-                showResult('realaqi-result', 'error', `IQAir AQI API test failed: ${error.message}`);
+                showResult('realaqi-result', 'error', `OpenWeatherMap Air Pollution API test failed: ${error.message}`);
+            }
+        }
+        
+        async function testAirPollutionHistory() {
+            const { lat, lng } = getCoords();
+            showResult('airhistory-result', 'loading', 'Testing Air Pollution History API...');
+            
+            try {
+                const apiKey = API_CONFIG.OPENWEATHER_API_KEY;
+                if (!apiKey) {
+                    throw new Error('OpenWeatherMap API key not configured in config.js');
+                }
+                
+                // Get data from 7 days ago to yesterday
+                const end = Math.floor(Date.now() / 1000); // Current timestamp
+                const start = end - (7 * 24 * 60 * 60); // 7 days ago
+                
+                const response = await fetch(`${API_CONFIG.ENDPOINTS.OPENWEATHER}/air_pollution/history?lat=${lat}&lon=${lng}&start=${start}&end=${end}&appid=${apiKey}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (!data.list || data.list.length === 0) {
+                    throw new Error('No historical air pollution data available');
+                }
+                
+                // Process last 7 days of data
+                const dailyData = data.list.slice(-7).map(item => ({
+                    date: new Date(item.dt * 1000).toLocaleDateString(),
+                    aqi: item.main.aqi,
+                    pm2_5: item.components.pm2_5,
+                    pm10: item.components.pm10
+                }));
+                
+                const historyData = {
+                    source: 'OpenWeatherMap Air Pollution History API',
+                    totalDataPoints: data.list.length,
+                    last7Days: dailyData,
+                    averageAqi: (dailyData.reduce((sum, day) => sum + day.aqi, 0) / dailyData.length).toFixed(1),
+                    averagePM25: (dailyData.reduce((sum, day) => sum + day.pm2_5, 0) / dailyData.length).toFixed(1)
+                };
+                
+                showResult('airhistory-result', 'success', 'Air Pollution History API test successful!', historyData);
+            } catch (error) {
+                showResult('airhistory-result', 'error', `Air Pollution History API test failed: ${error.message}`);
             }
         }
     </script>
