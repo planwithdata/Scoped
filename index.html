@@ -91,19 +91,34 @@
                 </ul>
                 
                 <p><strong>Sustainability Score Calculation (0-100):</strong></p>
+                <p><em>Percentile-based scoring against optimal baselines:</em></p>
                 <ul>
-                    <li><strong>Base Score:</strong> 50 points</li>
-                    <li><strong>Green Spaces:</strong> +3 points per park/forest within 1km (max +30)</li>
-                    <li><strong>Air Quality (AQI):</strong>
+                    <li><strong>Green Spaces (40% weight):</strong>
                         <ul>
-                            <li>Good (0-50): +20 points</li>
-                            <li>Moderate (51-100): +10 points</li>
-                            <li>Unhealthy for Sensitive (101-150): -5 points</li>
-                            <li>Unhealthy+ (151+): -20 points</li>
+                            <li>Perfect score: 15+ parks/forests within 1km</li>
+                            <li>Score = (actual count / 15) × 40 points</li>
                         </ul>
                     </li>
-                    <li><strong>Elevation:</strong> +1 point per 100m elevation (max +10)</li>
+                    <li><strong>Air Quality (40% weight):</strong>
+                        <ul>
+                            <li>Excellent (0-25 AQI): 40 points</li>
+                            <li>Good (26-50): 35 points</li>
+                            <li>Moderate (51-100): 25 points</li>
+                            <li>Unhealthy for Sensitive (101-150): 15 points</li>
+                            <li>Unhealthy (151-200): 5 points</li>
+                            <li>Very Unhealthy+ (201+): 0 points</li>
+                        </ul>
+                    </li>
+                    <li><strong>Elevation (20% weight):</strong>
+                        <ul>
+                            <li>Optimal (600-1000m): 20 points</li>
+                            <li>Good (300-1500m): 15 points</li>
+                            <li>Acceptable (100-2000m): 10 points</li>
+                            <li>Other elevations: 5 points</li>
+                        </ul>
+                    </li>
                 </ul>
+                <p><strong>Perfect Score (100):</strong> 15+ green spaces, AQI ≤25, elevation 600-1000m</p>
                 
                 <p><strong>Data Sources:</strong></p>
                 <ul>
@@ -298,29 +313,50 @@
             return data.results[0];
         }
 
-        // Calculate simple sustainability score (0-100)
+        // Calculate sustainability score using percentile-based system (0-100)
         function calculateSustainabilityScore(greenData, airData, elevationData) {
-            let score = 50; // Base score
+            // Baseline values for 100th percentile (perfect score)
+            const PERFECT_GREEN_SPACES = 15;  // 15+ green features within 1km
+            const PERFECT_AQI = 25;           // AQI of 25 (excellent)
+            const OPTIMAL_ELEVATION = 800;    // 800m elevation (good air quality, not too high)
             
-            // Green spaces factor (0-30 points)
-            const greenScore = Math.min(greenData.count * 3, 30);
-            score += greenScore;
+            let totalScore = 0;
             
-            // Air quality factor (-20 to +20 points) - using AQI scale
+            // Green spaces score (40% weight)
+            const greenPercentile = Math.min(greenData.count / PERFECT_GREEN_SPACES, 1);
+            const greenScore = greenPercentile * 40;
+            totalScore += greenScore;
+            
+            // Air quality score (40% weight)
             const aqi = airData?.value;
+            let airScore = 0;
             if (aqi !== null && aqi !== undefined) {
-                if (aqi <= 50) score += 20;      // Good
-                else if (aqi <= 100) score += 10; // Moderate
-                else if (aqi <= 150) score -= 5;  // Unhealthy for Sensitive
-                else score -= 20;                 // Unhealthy or worse
+                if (aqi <= PERFECT_AQI) airScore = 40;
+                else if (aqi <= 50) airScore = 35;
+                else if (aqi <= 100) airScore = 25;
+                else if (aqi <= 150) airScore = 15;
+                else if (aqi <= 200) airScore = 5;
+                else airScore = 0;
             }
+            totalScore += airScore;
             
-            // Elevation bonus (higher = cleaner air, max 10 points)
-            if (elevationData?.elevation) {
-                score += Math.min(elevationData.elevation / 100, 10);
+            // Elevation score (20% weight) - optimal around 800m
+            let elevationScore = 0;
+            if (elevationData?.elevation !== null && elevationData?.elevation !== undefined) {
+                const elevation = elevationData.elevation;
+                if (elevation >= 600 && elevation <= 1000) {
+                    elevationScore = 20; // Optimal range
+                } else if (elevation >= 300 && elevation <= 1500) {
+                    elevationScore = 15; // Good range
+                } else if (elevation >= 100 && elevation <= 2000) {
+                    elevationScore = 10; // Acceptable range
+                } else {
+                    elevationScore = 5; // Sea level or very high
+                }
             }
+            totalScore += elevationScore;
             
-            return Math.max(0, Math.min(100, Math.round(score)));
+            return Math.round(totalScore);
         }
 
         // UI Event Handlers
@@ -416,6 +452,7 @@
                 <div class="metric-card">
                     <div class="metric-title">🌳 Green Spaces</div>
                     <p><strong>${greenData.count}</strong> features within 1km</p>
+                    <p style="font-size: 14px; opacity: 0.8;">Baseline: 15 for perfect score</p>
                     <p style="font-size: 14px; opacity: 0.8;">Types: ${greenData.types.join(', ') || 'None detected'}</p>
                 </div>
                 
