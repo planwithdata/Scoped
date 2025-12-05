@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scoped - Sustainability Click POC</title>
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; }
+        #container { display: flex; height: 100vh; }
+        #map { flex: 1; }
+        #sidebar { width: 300px; padding: 20px; background: #f5f5f5; overflow-y: auto; }
+        #location-btn { margin-bottom: 10px; padding: 10px; background: #007cbf; color: white; border: none; cursor: pointer; }
+        .score { font-size: 24px; font-weight: bold; margin: 10px 0; }
+        .loading { color: #666; font-style: italic; }
+        .error { color: #d32f2f; }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="map"></div>
+        <div id="sidebar">
+            <button id="location-btn">📍 Go to My Location</button>
+            <h3>Sustainability Score</h3>
+            <p>Click anywhere on the map to analyze sustainability metrics for that location.</p>
+            <div id="results">
+                <p><em>Click on the map to get started...</em></p>
+            </div>
+            <hr>
+            <small>
+                <strong>Note:</strong> This POC uses free APIs with rate limits:
+                <br>• OSM tiles: demo use only
+                <br>• Overpass API: ~10k queries/day
+                <br>• OpenAQ: 2000 requests/hour
+            </small>
+        </div>
+    </div>
+
+    <script>
+        // Initialize map with India default center
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: {
+                version: 8,
+                sources: {
+                    'osm': {
+                        type: 'raster',
+                        tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                        tileSize: 256,
+                        attribution: '© OpenStreetMap contributors'
+                    }
+                },
+                layers: [{
+                    id: 'osm',
+                    type: 'raster',
+                    source: 'osm'
+                }]
+            },
+            center: [77.2, 28.6], // Delhi, India
+            zoom: 10
+        });
+
+        // Go to user location
+        document.getElementById('location-btn').addEventListener('click', () => {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    map.flyTo({
+                        center: [position.coords.longitude, position.coords.latitude],
+                        zoom: 12
+                    });
+                });
+            }
+        });
+
+        // Handle map clicks
+        map.on('click', async (e) => {
+            const { lng, lat } = e.lngLat;
+            
+            // Show loading state
+            document.getElementById('results').innerHTML = '<div class="loading">Analyzing location...</div>';
+            
+            try {
+                // Fetch all data in parallel
+                const [greenData, airData, elevationData] = await Promise.all([
+                    fetchGreenSpaces(lat, lng),
+                    fetchAirQuality(lat, lng),
+                    fetchElevation(lat, lng)
+                ]);
+
+                // Calculate sustainability score (0-100)
+                const score = calculateSustainabilityScore(greenData, airData, elevationData);
+                
+                // Display results
+                displayResults(score, greenData, airData, elevationData, lat, lng);
+                
+                // Add popup on map
+                new maplibregl.Popup()
+                    .setLngLat([lng, lat])
+                    .setHTML(`<strong>Sustainability Score: ${score}/100</strong>`)
+                    .addTo(map);
+                    
+            } catch (error) {
+                document.getElementById('results').innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        });
+
+        // Fetch green spaces using Overpass API
+        async function fetchGreenSpaces(lat, lng) {
+            const radius = 1000; // 1km radius
+            const query = `
+                [out:json][timeout:25];
+                (
+                  way["landuse"="forest"](around:${radius},${lat},${lng});
+                  way["leisure"="park"](around:${radius},${lat},${lng});
+                  way["natural"="wood"](around:${radius},${lat},${lng});
+                  way["landuse"="grass"](around:${radius},${lat},${lng});
+                );
+                out geom;
+            `;
+            
+            const response = await fetch('https://overpass-api.de/api/interpreter', {
+                method: 'POST',
+                body: query
+            });
+            
+            if (!response.ok) throw new Error('Overpass API error');
+            
+            const data = await response.json();
+            return {
+                count: data.elements.length,
+                types: [...new Set(data.elements.map(el => el.tags?.landuse || el.tags?.leisure || el.tags?.natural))]
+            };
+        }
+
+        // Fetch air quality using OpenAQ API
+        async function fetchAirQuality(lat, lng) {
+            const response = await fetch(
+                `https://api.openaq.org/v2/latest?coordinates=${lat},${lng}&radius=25000&limit=1&parameter=pm25`
+            );
+            
+            if (!response.ok) throw new Error('OpenAQ API error');
+            
+            const data = await response.json();
+            return data.results[0] || { measurements: [{ value: null }] };
+        }
+
+        // Fetch elevation using Open-Elevation API
+        async function fetchElevation(lat, lng) {
+            const response = await fetch(
+                `https://api.open-elevation.com/api/v1/lookup?locations=${lat},${lng}`
+            );
+            
+            if (!response.ok) throw new Error('Open-Elevation API error');
+            
+            const data = await response.json();
+            return data.results[0];
+        }
+
+        // Calculate simple sustainability score (0-100)
+        function calculateSustainabilityScore(greenData, airData, elevationData) {
+            let score = 50; // Base score
+            
+            // Green spaces factor (0-30 points)
+            const greenScore = Math.min(greenData.count * 3, 30);
+            score += greenScore;
+            
+            // Air quality factor (-20 to +20 points)
+            const pm25 = airData.measurements?.[0]?.value;
+            if (pm25 !== null && pm25 !== undefined) {
+                if (pm25 < 12) score += 20;      // WHO good
+                else if (pm25 < 35) score += 10; // WHO moderate
+                else if (pm25 < 55) score -= 5;  // WHO unhealthy
+                else score -= 20;                // WHO very unhealthy
+            }
+            
+            // Elevation bonus (higher = cleaner air, max 10 points)
+            if (elevationData?.elevation) {
+                score += Math.min(elevationData.elevation / 100, 10);
+            }
+            
+            return Math.max(0, Math.min(100, Math.round(score)));
+        }
+
+        // Display results in sidebar
+        function displayResults(score, greenData, airData, elevationData, lat, lng) {
+            const pm25 = airData.measurements?.[0]?.value;
+            const elevation = elevationData?.elevation;
+            
+            document.getElementById('results').innerHTML = `
+                <div class="score" style="color: ${score > 70 ? 'green' : score > 40 ? 'orange' : 'red'}">
+                    ${score}/100
+                </div>
+                <p><strong>Location:</strong> ${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
+                
+                <h4>🌳 Green Spaces</h4>
+                <p>${greenData.count} features found within 1km</p>
+                <p>Types: ${greenData.types.join(', ') || 'None detected'}</p>
+                
+                <h4>🌬️ Air Quality</h4>
+                <p>PM2.5: ${pm25 ? pm25.toFixed(1) + ' μg/m³' : 'No data available'}</p>
+                ${pm25 ? `<p>Status: ${pm25 < 12 ? 'Good' : pm25 < 35 ? 'Moderate' : pm25 < 55 ? 'Unhealthy' : 'Very Unhealthy'}</p>` : ''}
+                
+                <h4>⛰️ Elevation</h4>
+                <p>${elevation ? elevation.toFixed(0) + 'm above sea level' : 'No data available'}</p>
+                
+                <hr>
+                <small><em>Score factors: Green spaces (0-30), Air quality (-20 to +20), Elevation (0-10)</em></small>
+            `;
+        }
+    </script>
+</body>
+</html>
