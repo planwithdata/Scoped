@@ -139,11 +139,58 @@
         .social-section { background: linear-gradient(135deg, #fff3e0, #fef7ed); border-left-color: #ff9800; }
         .economic-section { background: linear-gradient(135deg, #f3e5f5, #faf5ff); border-left-color: #9c27b0; }
         
+        /* Category score cards */
+        .category-score-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0;
+        }
+        
+        .category-score-card {
+            background: white; padding: 20px; border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .category-score-value {
+            font-size: 32px; font-weight: 900; margin: 8px 0;
+        }
+        
+        .category-score-label {
+            font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        
+        .env-card { border-left-color: #4CAF50; }
+        .social-card { border-left-color: #ff9800; }
+        .economic-card { border-left-color: #9c27b0; }
+        
+        /* Additional scores section */
+        .additional-scores {
+            margin: 20px 0; padding: 15px; background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 12px; border-left: 4px solid #2196f3;
+        }
+        
+        .additional-scores-title {
+            font-size: 16px; font-weight: 700; margin-bottom: 15px;
+            color: #1565c0; display: flex; align-items: center; gap: 8px;
+        }
+        
+        .score-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        .score-row:last-child { border-bottom: none; }
+        
+        .score-name { font-size: 14px; color: #333; }
+        .score-value-small { font-size: 18px; font-weight: 700; }
+        
         /* Responsive Design */
         @media (max-width: 768px) {
             .app-container { flex-direction: column; }
-            .sidebar { width: 100%; height: 60vh; }
-            .map-container { height: 40vh; }
+            .sidebar { width: 100%; height: 45vh; overflow-y: auto; }
+            .map-container { height: 55vh; }
+            .category-score-grid { grid-template-columns: 1fr; gap: 10px; }
+            .category-score-card { padding: 15px; }
+            .category-score-value { font-size: 24px; }
             .metrics-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
             .score-circle { width: 80px; height: 80px; font-size: 24px; }
             .metric-card { padding: 8px; min-height: 70px; }
@@ -405,8 +452,9 @@
                     return { total: 0, banks: 0, atms: 0, markets: 0, police: 0 };
                 });
 
-                // Calculate comprehensive score with all data
-                const score = calculateSustainabilityScore(greenData, airData, elevationData, weatherData, climateData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData);
+                // Calculate all scores
+                const scores = calculateAllScores(greenData, airData, elevationData, weatherData, climateData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData);
+                const score = scores.overall;
                 
                 console.log('Analysis complete. Score:', score);
                 
@@ -414,34 +462,34 @@
                 const clickData = {
                     lat: lat.toFixed(4),
                     lng: lng.toFixed(4),
-                    score,
+                    score: scores.overall,
                     timestamp: new Date().toLocaleString(),
+                    environmental: scores.environmental,
+                    social: scores.social,
+                    economic: scores.economic,
+                    airQuality: scores.airQuality,
+                    traffic: scores.traffic,
+                    greenLiving: scores.greenLiving,
                     aqi: airData?.value,
                     pm25: airData?.pm25Concentration,
                     temperature: weatherData?.temperature,
                     greenSpaces: greenData.count,
                     waterBodies: greenData.waterCount,
                     healthcare: healthcareData?.total || 0,
-                    education: educationData?.total || 0,
-                    transport: transportData?.total || 0,
-                    services: servicesData?.total || 0,
-                    noiseLevel: noiseData?.noiseLevel,
-                    biodiversity: (biodiversityData?.protectedAreas || 0) + (biodiversityData?.naturalAreas || 0),
-                    elevation: elevationData?.elevation,
-                    solarRadiation: climateData?.solarRadiation
+                    noiseLevel: noiseData?.noiseLevel
                 };
                 previousClicks.unshift(clickData);
                 if (previousClicks.length > 10) previousClicks = previousClicks.slice(0, 10);
                 localStorage.setItem('scopedClicks', JSON.stringify(previousClicks));
                 
-                // Display comprehensive results
-                displayResults(score, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, lat, lng);
+                // Display comprehensive results with all scores
+                displayResults(scores, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, lat, lng);
                 
                 // Add marker
                 clearMarkers();
-                const marker = new maplibregl.Marker({ color: getScoreColor(score) })
+                const marker = new maplibregl.Marker({ color: getScoreColor(scores.overall) })
                     .setLngLat([lng, lat])
-                    .setPopup(new maplibregl.Popup().setHTML(`<strong>Sustainability Score: ${score}/100</strong><br><small>${getScoreCategory(score)}</small>`))
+                    .setPopup(new maplibregl.Popup().setHTML(`<strong>Sustainability Score: ${scores.overall}/100</strong><br><small>${getScoreCategory(scores.overall)}</small>`))
                     .addTo(map);
                 currentMarkers.push(marker);
                 
@@ -458,18 +506,59 @@
             }
         });
 
-        // Display results function
-        function displayResults(score, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, lat, lng) {
-            const scoreColor = getScoreColor(score);
-            const scoreCategory = getScoreCategory(score);
+        // Display results function with all scores
+        function displayResults(scores, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, lat, lng) {
+            const scoreColor = getScoreColor(scores.overall);
+            const scoreCategory = getScoreCategory(scores.overall);
             
             document.getElementById('results').innerHTML = `
                 <div class="score-display">
                     <div class="score-circle" style="background: ${scoreColor};">
-                        ${score}
+                        ${scores.overall}
                     </div>
                     <h2>${scoreCategory}</h2>
                     <div class="score-text">📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}</div>
+                </div>
+                
+                <!-- Category Scores -->
+                <div class="category-score-grid">
+                    <div class="category-score-card env-card">
+                        <div class="category-score-value" style="color: ${getScoreColor(scores.environmental)};">${scores.environmental}</div>
+                        <div class="category-score-label">🌱 Environmental</div>
+                    </div>
+                    <div class="category-score-card social-card">
+                        <div class="category-score-value" style="color: ${getScoreColor(scores.social)};">${scores.social}</div>
+                        <div class="category-score-label">🏥 Social</div>
+                    </div>
+                    <div class="category-score-card economic-card">
+                        <div class="category-score-value" style="color: ${getScoreColor(scores.economic)};">${scores.economic}</div>
+                        <div class="category-score-label">🏪 Economic</div>
+                    </div>
+                </div>
+                
+                <!-- Additional Neighborhood Scores -->
+                <div class="additional-scores">
+                    <div class="additional-scores-title">🏡 Neighborhood Insights</div>
+                    <div class="score-row">
+                        <span class="score-name">🌬️ Air Quality Index</span>
+                        <span class="score-value-small" style="color: ${getScoreColor(scores.airQuality)};">${scores.airQuality}/100</span>
+                    </div>
+                    <div class="score-row">
+                        <span class="score-name">🚗 Traffic & Accessibility</span>
+                        <span class="score-value-small" style="color: ${getScoreColor(scores.traffic)};">${scores.traffic}/100</span>
+                    </div>
+                    <div class="score-row">
+                        <span class="score-name">🌳 Green Living Index</span>
+                        <span class="score-value-small" style="color: ${getScoreColor(scores.greenLiving)};">${scores.greenLiving}/100</span>
+                    </div>
+                    <div class="score-row">
+                        <span class="score-name">🏥 Health & Safety</span>
+                        <span class="score-value-small" style="color: ${getScoreColor(scores.healthSafety)};">${scores.healthSafety}/100</span>
+                    </div>
+                    <div class="score-row">
+                        <span class="score-name">⚡ Energy & Climate</span>
+                        <span class="score-value-small" style="color: ${getScoreColor(scores.energyClimate)};">${scores.energyClimate}/100</span>
+                    </div>
                 </div>
                 
                 <!-- Environmental Health (40%) -->
@@ -1038,90 +1127,180 @@
             }
         }
         
-        function calculateSustainabilityScore(greenData, airData, elevationData, weatherData = {}, climateData = {}, noiseData = {}, biodiversityData = {}, healthcareData = {total: 0}, educationData = {total: 0}, transportData = {total: 0}, servicesData = {total: 0}) {
-            let totalScore = 0;
-            console.log('Calculating comprehensive sustainability score...');
+        function calculateAllScores(greenData, airData, elevationData, weatherData = {}, climateData = {}, noiseData = {}, biodiversityData = {}, healthcareData = {total: 0}, educationData = {total: 0}, transportData = {total: 0}, servicesData = {total: 0}) {
+            console.log('Calculating all sustainability and neighborhood scores...');
             
-            // === ENVIRONMENTAL HEALTH (40% total weight) ===
+            // === CATEGORY SCORES ===
             
-            // Air Quality Score (15% weight)
+            // Environmental Health Score (0-100)
+            let envScore = 0;
             const aqi = airData?.value;
             if (aqi !== null && aqi !== undefined) {
-                if (aqi <= 50) totalScore += 15;
-                else if (aqi <= 100) totalScore += 12;
-                else if (aqi <= 150) totalScore += 8;
-                else if (aqi <= 200) totalScore += 4;
+                if (aqi <= 50) envScore += 37.5; // 15/40 * 100
+                else if (aqi <= 100) envScore += 30;
+                else if (aqi <= 150) envScore += 20;
+                else if (aqi <= 200) envScore += 10;
             }
             
-            // Green Space Access (12% weight)
             const greenCount = greenData.count || 0;
-            if (greenCount >= 15) totalScore += 12;
-            else if (greenCount >= 10) totalScore += 10;
-            else if (greenCount >= 5) totalScore += 7;
-            else totalScore += Math.max(0, greenCount * 2);
+            if (greenCount >= 15) envScore += 30; // 12/40 * 100
+            else if (greenCount >= 10) envScore += 25;
+            else if (greenCount >= 5) envScore += 17.5;
+            else envScore += Math.max(0, greenCount * 5);
             
-            // Water Body Access (3% weight)
             const waterCount = greenData.waterCount || 0;
-            totalScore += Math.min(3, waterCount);
+            envScore += Math.min(7.5, waterCount * 2.5); // 3/40 * 100
             
-            // Climate Comfort (5% weight)
             const temperature = weatherData?.temperature;
-            if (temperature >= 18 && temperature <= 26) totalScore += 5;
-            else if (temperature >= 15 && temperature <= 30) totalScore += 3;
-            else if (temperature >= 10 && temperature <= 35) totalScore += 1;
+            if (temperature >= 18 && temperature <= 26) envScore += 12.5; // 5/40 * 100
+            else if (temperature >= 15 && temperature <= 30) envScore += 7.5;
+            else if (temperature >= 10 && temperature <= 35) envScore += 2.5;
             
-            // Noise Pollution (3% weight) - Lower noise = higher score
             const noiseLevel = noiseData?.noiseLevel;
             if (noiseLevel !== null && noiseLevel !== undefined) {
-                if (noiseLevel <= 20) totalScore += 3;
-                else if (noiseLevel <= 40) totalScore += 2;
-                else if (noiseLevel <= 60) totalScore += 1;
+                if (noiseLevel <= 20) envScore += 7.5; // 3/40 * 100
+                else if (noiseLevel <= 40) envScore += 5;
+                else if (noiseLevel <= 60) envScore += 2.5;
             }
             
-            // Biodiversity Score (2% weight)
             const biodiversityFeatures = (biodiversityData?.protectedAreas || 0) + (biodiversityData?.naturalAreas || 0);
-            if (biodiversityFeatures >= 3) totalScore += 2;
-            else if (biodiversityFeatures >= 2) totalScore += 1.5;
-            else if (biodiversityFeatures >= 1) totalScore += 1;
+            if (biodiversityFeatures >= 3) envScore += 5; // 2/40 * 100
+            else if (biodiversityFeatures >= 2) envScore += 3.75;
+            else if (biodiversityFeatures >= 1) envScore += 2.5;
             
-            // === SOCIAL INFRASTRUCTURE (35% total weight) ===
-            
-            // Healthcare Access (15% weight)
+            // Social Infrastructure Score (0-100)
+            let socialScore = 0;
             const healthcare = healthcareData?.total || 0;
-            if (healthcare >= 10) totalScore += 15;
-            else if (healthcare >= 7) totalScore += 12;
-            else if (healthcare >= 4) totalScore += 9;
-            else totalScore += healthcare * 2;
+            if (healthcare >= 10) socialScore += 42.86; // 15/35 * 100
+            else if (healthcare >= 7) socialScore += 34.29;
+            else if (healthcare >= 4) socialScore += 25.71;
+            else socialScore += healthcare * 5.71;
             
-            // Education Access (10% weight)
             const education = educationData?.total || 0;
-            if (education >= 8) totalScore += 10;
-            else if (education >= 5) totalScore += 8;
-            else totalScore += Math.min(6, education * 1.5);
+            if (education >= 8) socialScore += 28.57; // 10/35 * 100
+            else if (education >= 5) socialScore += 22.86;
+            else socialScore += Math.min(17.14, education * 4.29);
             
-            // Public Transport (10% weight)
             const transport = transportData?.total || 0;
-            if (transport >= 15) totalScore += 10;
-            else if (transport >= 10) totalScore += 8;
-            else totalScore += Math.min(6, transport * 0.6);
+            if (transport >= 15) socialScore += 28.57; // 10/35 * 100
+            else if (transport >= 10) socialScore += 22.86;
+            else socialScore += Math.min(17.14, transport * 1.71);
             
-            // === ECONOMIC SUSTAINABILITY (25% total weight) ===
-            
-            // Essential Services (15% weight)
+            // Economic Sustainability Score (0-100)
+            let economicScore = 0;
             const services = servicesData?.total || 0;
-            if (services >= 20) totalScore += 15;
-            else if (services >= 15) totalScore += 12;
-            else totalScore += Math.min(9, services * 0.6);
+            if (services >= 20) economicScore += 60; // 15/25 * 100
+            else if (services >= 15) economicScore += 48;
+            else economicScore += Math.min(36, services * 2.4);
             
-            // Energy Potential (10% weight)
             const solar = climateData?.solarRadiation;
-            if (solar >= 6) totalScore += 10;
-            else if (solar >= 4.5) totalScore += 8;
-            else if (solar >= 3) totalScore += 6;
-            else if (solar >= 2) totalScore += 4;
+            if (solar >= 6) economicScore += 40; // 10/25 * 100
+            else if (solar >= 4.5) economicScore += 32;
+            else if (solar >= 3) economicScore += 24;
+            else if (solar >= 2) economicScore += 16;
             
-            console.log('Final sustainability score:', Math.round(totalScore));
-            return Math.round(totalScore);
+            // Overall Sustainability Score
+            const overallScore = Math.round((envScore * 0.4) + (socialScore * 0.35) + (economicScore * 0.25));
+            
+            // === ADDITIONAL NEIGHBORHOOD SCORES ===
+            
+            // Air Quality Index Score (0-100)
+            let airQualityScore = 100;
+            if (aqi !== null && aqi !== undefined) {
+                if (aqi <= 50) airQualityScore = 100;
+                else if (aqi <= 100) airQualityScore = 80;
+                else if (aqi <= 150) airQualityScore = 60;
+                else if (aqi <= 200) airQualityScore = 40;
+                else if (aqi <= 300) airQualityScore = 20;
+                else airQualityScore = 0;
+            }
+            
+            // Traffic & Accessibility Score (0-100)
+            let trafficScore = 50;
+            const roadDensity = noiseData?.roadDensity || 0;
+            const transportAccess = transport;
+            
+            // Lower road density = less traffic congestion (good)
+            if (roadDensity <= 2) trafficScore += 25;
+            else if (roadDensity <= 5) trafficScore += 15;
+            else if (roadDensity <= 10) trafficScore += 5;
+            else trafficScore -= Math.min(25, (roadDensity - 10) * 2);
+            
+            // Higher transport access = better accessibility (good)
+            if (transportAccess >= 10) trafficScore += 25;
+            else if (transportAccess >= 5) trafficScore += 15;
+            else trafficScore += transportAccess * 2;
+            
+            trafficScore = Math.max(0, Math.min(100, trafficScore));
+            
+            // Green Living Index (0-100)
+            let greenLivingScore = 0;
+            // Green spaces (40%)
+            if (greenCount >= 15) greenLivingScore += 40;
+            else if (greenCount >= 10) greenLivingScore += 30;
+            else if (greenCount >= 5) greenLivingScore += 20;
+            else greenLivingScore += greenCount * 3;
+            
+            // Water bodies (30%)
+            if (waterCount >= 3) greenLivingScore += 30;
+            else greenLivingScore += waterCount * 10;
+            
+            // Biodiversity (30%)
+            if (biodiversityFeatures >= 3) greenLivingScore += 30;
+            else if (biodiversityFeatures >= 2) greenLivingScore += 20;
+            else greenLivingScore += biodiversityFeatures * 10;
+            
+            // Health & Safety Score (0-100)
+            let healthSafetyScore = 0;
+            // Healthcare access (50%)
+            if (healthcare >= 10) healthSafetyScore += 50;
+            else if (healthcare >= 5) healthSafetyScore += 35;
+            else healthSafetyScore += healthcare * 5;
+            
+            // Air quality (30%)
+            healthSafetyScore += (airQualityScore * 0.3);
+            
+            // Safety services (20%) - police stations
+            const policeStations = servicesData?.police || 0;
+            if (policeStations >= 2) healthSafetyScore += 20;
+            else healthSafetyScore += policeStations * 10;
+            
+            healthSafetyScore = Math.min(100, healthSafetyScore);
+            
+            // Energy & Climate Score (0-100)
+            let energyClimateScore = 0;
+            // Solar potential (40%)
+            if (solar >= 6) energyClimateScore += 40;
+            else if (solar >= 4) energyClimateScore += 30;
+            else if (solar >= 2) energyClimateScore += 20;
+            else if (solar) energyClimateScore += solar * 5;
+            
+            // Climate comfort (40%)
+            if (temperature >= 18 && temperature <= 26) energyClimateScore += 40;
+            else if (temperature >= 15 && temperature <= 30) energyClimateScore += 25;
+            else if (temperature >= 10 && temperature <= 35) energyClimateScore += 15;
+            
+            // Elevation (20%) - higher elevation can be better for climate
+            const elevation = elevationData?.elevation;
+            if (elevation > 1000) energyClimateScore += 20;
+            else if (elevation > 500) energyClimateScore += 15;
+            else if (elevation > 100) energyClimateScore += 10;
+            else if (elevation > 0) energyClimateScore += 5;
+            
+            const scores = {
+                overall: overallScore,
+                environmental: Math.round(envScore),
+                social: Math.round(socialScore),
+                economic: Math.round(economicScore),
+                airQuality: Math.round(airQualityScore),
+                traffic: Math.round(trafficScore),
+                greenLiving: Math.round(greenLivingScore),
+                healthSafety: Math.round(healthSafetyScore),
+                energyClimate: Math.round(energyClimateScore)
+            };
+            
+            console.log('All scores calculated:', scores);
+            return scores;
         }
     </script>
 </body>
