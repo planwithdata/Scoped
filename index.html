@@ -107,6 +107,8 @@
 
         // Fetch green spaces using Overpass API
         async function fetchGreenSpaces(lat, lng) {
+            console.log('🌳 Fetching green spaces for:', lat, lng);
+            
             const radius = 1000; // 1km radius
             const query = `
                 [out:json][timeout:25];
@@ -124,39 +126,64 @@
                 body: query
             });
             
+            console.log('📊 Overpass response status:', response.status);
+            
             if (!response.ok) throw new Error('Overpass API error');
             
             const data = await response.json();
+            console.log('✅ Green spaces found:', data.elements.length);
+            
             return {
                 count: data.elements.length,
                 types: [...new Set(data.elements.map(el => el.tags?.landuse || el.tags?.leisure || el.tags?.natural))]
             };
         }
 
-        // --- Use OpenAQ v2 public endpoint (no auth) ---
-        const OPENAQ_ENDPOINT_V2 = 'https://api.openaq.org/v2/latest';
+        // OpenAQ API configuration - requires API key for v3
+        const OPENAQ_API_KEY = null; // Set your API key here: "YOUR-OPENAQ-API-KEY"
         
-        // Fetch nearest PM2.5 using OpenAQ v2
+        // Fetch nearest PM2.5 using OpenAQ
         async function fetchAQI(lat, lon) {
+          console.log('🌬️ Fetching air quality data for:', lat, lon);
+          
+          if (!OPENAQ_API_KEY) {
+            console.warn('⚠️ OpenAQ API key not set. Get one from: https://openaq.org/');
+            return { value: null, error: 'API key required' };
+          }
+          
           try {
-            // v2 query: coordinates=lat,lon and radius in meters
-            const url = `${OPENAQ_ENDPOINT_V2}?limit=5&coordinates=${lat},${lon}&radius=50000&parameter=pm25&order_by=distance`;
-            const res = await fetch(url);
+            const url = `https://api.openaq.org/v3/parameters/2/latest?coordinates=${lat},${lon}&radius=25000&limit=10`;
+            console.log('📡 OpenAQ request:', url);
+            
+            const res = await fetch(url, {
+              headers: {
+                'X-API-Key': OPENAQ_API_KEY
+              }
+            });
+            
+            console.log('📊 OpenAQ response status:', res.status);
+            
             if (!res.ok) {
-              console.warn('OpenAQ v2 returned non-OK', res.status, await res.text());
-              return null;
+              const errorText = await res.text();
+              console.error('❌ OpenAQ API error:', res.status, errorText);
+              return { value: null, error: `API error: ${res.status}` };
             }
-            const obj = await res.json();
-            if (!obj || !obj.results || obj.results.length === 0) return null;
-            const measurements = obj.results[0].measurements;
-            if (!measurements || measurements.length === 0) return null;
-            const pm25 = measurements[0].value;
-            // Map PM2.5 into 0..100 (lower is better), keep same simple scoring as POC
-            const score = Math.round(Math.max(0, Math.min(100, (pm25/300)*100 )));
-            return { pm25, score };
+            
+            const data = await res.json();
+            console.log('✅ OpenAQ data received:', data);
+            
+            if (!data.results || data.results.length === 0) {
+              console.warn('⚠️ No air quality data found for this location');
+              return { value: null, error: 'No data available' };
+            }
+            
+            const pm25 = data.results[0].value;
+            console.log('🎯 PM2.5 value:', pm25);
+            
+            return { value: pm25 };
           } catch(err) {
-            console.warn('OpenAQ v2 error', err);
-            return null;
+            console.error('💥 OpenAQ fetch error:', err);
+            return { value: null, error: err.message };
           }
         }
 
@@ -168,13 +195,19 @@
 
         // Fetch elevation using Open-Elevation API
         async function fetchElevation(lat, lng) {
+            console.log('⛰️ Fetching elevation for:', lat, lng);
+            
             const response = await fetch(
                 `https://api.open-elevation.com/api/v1/lookup?locations=${lat},${lng}`
             );
             
+            console.log('📊 Elevation response status:', response.status);
+            
             if (!response.ok) throw new Error('Open-Elevation API error');
             
             const data = await response.json();
+            console.log('✅ Elevation data:', data.results[0]);
+            
             return data.results[0];
         }
 
