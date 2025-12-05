@@ -18,6 +18,8 @@
         .btn-primary:hover { background: #45a049; transform: translateY(-2px); }
         .btn-secondary { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); }
         .btn-secondary:hover { background: rgba(255,255,255,0.3); }
+        .popup-btn { background: #f5f5f5; color: #333; border: 1px solid #ddd; }
+        .popup-btn:hover { background: #e0e0e0; }
         
         /* Map Controls */
         .map-controls { position: absolute; top: 10px; left: 10px; z-index: 1000; }
@@ -91,34 +93,16 @@
                 </ul>
                 
                 <p><strong>Sustainability Score Calculation (0-100):</strong></p>
-                <p><em>Percentile-based scoring against optimal baselines:</em></p>
+                <p><em>Comprehensive scoring across 6 categories:</em></p>
                 <ul>
-                    <li><strong>Green Spaces (40% weight):</strong>
-                        <ul>
-                            <li>Perfect score: 15+ parks/forests within 1km</li>
-                            <li>Score = (actual count / 15) × 40 points</li>
-                        </ul>
-                    </li>
-                    <li><strong>Air Quality (40% weight):</strong>
-                        <ul>
-                            <li>Excellent (0-25 AQI): 40 points</li>
-                            <li>Good (26-50): 35 points</li>
-                            <li>Moderate (51-100): 25 points</li>
-                            <li>Unhealthy for Sensitive (101-150): 15 points</li>
-                            <li>Unhealthy (151-200): 5 points</li>
-                            <li>Very Unhealthy+ (201+): 0 points</li>
-                        </ul>
-                    </li>
-                    <li><strong>Elevation (20% weight):</strong>
-                        <ul>
-                            <li>Optimal (600-1000m): 20 points</li>
-                            <li>Good (300-1500m): 15 points</li>
-                            <li>Acceptable (100-2000m): 10 points</li>
-                            <li>Other elevations: 5 points</li>
-                        </ul>
-                    </li>
+                    <li><strong>Green Spaces (25%):</strong> 15+ parks/forests within 1km</li>
+                    <li><strong>Air Quality (25%):</strong> AQI scale from excellent (25) to hazardous (200+)</li>
+                    <li><strong>Healthcare (15%):</strong> 10+ hospitals/clinics within 2km</li>
+                    <li><strong>Education (10%):</strong> 8+ schools/colleges within 2km</li>
+                    <li><strong>Transport (15%):</strong> 15+ bus stops/stations within 1.5km</li>
+                    <li><strong>Services (10%):</strong> 20+ banks/markets/police within 1.5km</li>
                 </ul>
-                <p><strong>Perfect Score (100):</strong> 15+ green spaces, AQI ≤25, elevation 600-1000m</p>
+                <p><strong>Perfect Score (100):</strong> Optimal levels in all 6 categories</p>
                 
                 <p><strong>Data Sources:</strong></p>
                 <ul>
@@ -134,8 +118,8 @@
             <div class="popup-content">
                 <span class="popup-close" onclick="closePopup('basemap-popup')">&times;</span>
                 <h3>🗺️ Select Basemap</h3>
-                <button class="btn btn-secondary" onclick="changeBasemap('osm')" style="width: 100%; margin: 5px 0;">OpenStreetMap</button>
-                <button class="btn btn-secondary" onclick="changeBasemap('satellite')" style="width: 100%; margin: 5px 0;">Google Satellite</button>
+                <button class="btn popup-btn" onclick="changeBasemap('osm')" style="width: 100%; margin: 5px 0;">OpenStreetMap</button>
+                <button class="btn popup-btn" onclick="changeBasemap('satellite')" style="width: 100%; margin: 5px 0;">Google Satellite</button>
             </div>
         </div>
     </div>
@@ -189,14 +173,18 @@
             
             try {
                 // Fetch all data in parallel
-                const [greenData, airData, elevationData] = await Promise.all([
+                const [greenData, airData, elevationData, healthcareData, educationData, transportData, servicesData] = await Promise.all([
                     fetchGreenSpaces(lat, lng),
                     fetchAirQuality(lat, lng),
-                    fetchElevation(lat, lng)
+                    fetchElevation(lat, lng),
+                    fetchHealthcare(lat, lng),
+                    fetchEducation(lat, lng),
+                    fetchTransport(lat, lng),
+                    fetchServices(lat, lng)
                 ]);
 
                 // Calculate sustainability score (0-100)
-                const score = calculateSustainabilityScore(greenData, airData, elevationData);
+                const score = calculateSustainabilityScore(greenData, airData, elevationData, healthcareData, educationData, transportData, servicesData);
                 
                 // Save to previous clicks
                 const clickData = {
@@ -206,14 +194,18 @@
                     timestamp: new Date().toLocaleString(),
                     greenCount: greenData.count,
                     aqi: airData?.value,
-                    elevation: elevationData?.elevation
+                    elevation: elevationData?.elevation,
+                    healthcare: healthcareData?.total || 0,
+                    education: educationData?.total || 0,
+                    transport: transportData?.total || 0,
+                    services: servicesData?.total || 0
                 };
                 previousClicks.unshift(clickData);
                 if (previousClicks.length > 50) previousClicks = previousClicks.slice(0, 50);
                 localStorage.setItem('scopedClicks', JSON.stringify(previousClicks));
                 
                 // Display results
-                displayResults(score, greenData, airData, elevationData, lat, lng);
+                displayResults(score, greenData, airData, elevationData, healthcareData, educationData, transportData, servicesData, lat, lng);
                 updatePreviousClicksList();
                 
                 // Add popup on map
@@ -259,6 +251,166 @@
                 count: data.elements.length,
                 types: [...new Set(data.elements.map(el => el.tags?.landuse || el.tags?.leisure || el.tags?.natural))]
             };
+        }
+        
+        // Fetch healthcare facilities using Overpass API
+        async function fetchHealthcare(lat, lng) {
+            console.log('🏥 Fetching healthcare facilities for:', lat, lng);
+            
+            const radius = 2000; // 2km radius
+            const query = `
+                [out:json][timeout:25];
+                (
+                  node["amenity"="hospital"](around:${radius},${lat},${lng});
+                  node["amenity"="clinic"](around:${radius},${lat},${lng});
+                  node["amenity"="pharmacy"](around:${radius},${lat},${lng});
+                  node["amenity"="doctors"](around:${radius},${lat},${lng});
+                );
+                out;
+            `;
+            
+            const response = await fetch('https://overpass-api.de/api/interpreter', {
+                method: 'POST',
+                body: query
+            });
+            
+            console.log('📊 Healthcare response status:', response.status);
+            
+            if (!response.ok) throw new Error('Healthcare API error');
+            
+            const data = await response.json();
+            console.log('✅ Healthcare facilities found:', data.elements.length);
+            
+            const facilities = {
+                hospitals: data.elements.filter(el => el.tags?.amenity === 'hospital').length,
+                clinics: data.elements.filter(el => el.tags?.amenity === 'clinic').length,
+                pharmacies: data.elements.filter(el => el.tags?.amenity === 'pharmacy').length,
+                total: data.elements.length
+            };
+            
+            console.log('🎯 Healthcare breakdown:', facilities);
+            return facilities;
+        }
+        
+        // Fetch education facilities using Overpass API
+        async function fetchEducation(lat, lng) {
+            console.log('🏫 Fetching education facilities for:', lat, lng);
+            
+            const radius = 2000; // 2km radius
+            const query = `
+                [out:json][timeout:25];
+                (
+                  node["amenity"="school"](around:${radius},${lat},${lng});
+                  node["amenity"="college"](around:${radius},${lat},${lng});
+                  node["amenity"="university"](around:${radius},${lat},${lng});
+                  node["amenity"="library"](around:${radius},${lat},${lng});
+                );
+                out;
+            `;
+            
+            const response = await fetch('https://overpass-api.de/api/interpreter', {
+                method: 'POST',
+                body: query
+            });
+            
+            console.log('📊 Education response status:', response.status);
+            
+            if (!response.ok) throw new Error('Education API error');
+            
+            const data = await response.json();
+            console.log('✅ Education facilities found:', data.elements.length);
+            
+            const facilities = {
+                schools: data.elements.filter(el => el.tags?.amenity === 'school').length,
+                colleges: data.elements.filter(el => el.tags?.amenity === 'college').length,
+                universities: data.elements.filter(el => el.tags?.amenity === 'university').length,
+                libraries: data.elements.filter(el => el.tags?.amenity === 'library').length,
+                total: data.elements.length
+            };
+            
+            console.log('🎯 Education breakdown:', facilities);
+            return facilities;
+        }
+        
+        // Fetch public transport using Overpass API
+        async function fetchTransport(lat, lng) {
+            console.log('🚌 Fetching transport facilities for:', lat, lng);
+            
+            const radius = 1500; // 1.5km radius
+            const query = `
+                [out:json][timeout:25];
+                (
+                  node["public_transport"="stop_position"](around:${radius},${lat},${lng});
+                  node["highway"="bus_stop"](around:${radius},${lat},${lng});
+                  node["railway"="station"](around:${radius},${lat},${lng});
+                  node["public_transport"="station"](around:${radius},${lat},${lng});
+                );
+                out;
+            `;
+            
+            const response = await fetch('https://overpass-api.de/api/interpreter', {
+                method: 'POST',
+                body: query
+            });
+            
+            console.log('📊 Transport response status:', response.status);
+            
+            if (!response.ok) throw new Error('Transport API error');
+            
+            const data = await response.json();
+            console.log('✅ Transport facilities found:', data.elements.length);
+            
+            const facilities = {
+                busStops: data.elements.filter(el => el.tags?.highway === 'bus_stop' || el.tags?.public_transport === 'stop_position').length,
+                stations: data.elements.filter(el => el.tags?.railway === 'station' || el.tags?.public_transport === 'station').length,
+                total: data.elements.length
+            };
+            
+            console.log('🎯 Transport breakdown:', facilities);
+            return facilities;
+        }
+        
+        // Fetch essential services using Overpass API
+        async function fetchServices(lat, lng) {
+            console.log('🏦 Fetching essential services for:', lat, lng);
+            
+            const radius = 1500; // 1.5km radius
+            const query = `
+                [out:json][timeout:25];
+                (
+                  node["amenity"="bank"](around:${radius},${lat},${lng});
+                  node["amenity"="atm"](around:${radius},${lat},${lng});
+                  node["shop"="supermarket"](around:${radius},${lat},${lng});
+                  node["amenity"="marketplace"](around:${radius},${lat},${lng});
+                  node["amenity"="post_office"](around:${radius},${lat},${lng});
+                  node["amenity"="police"](around:${radius},${lat},${lng});
+                );
+                out;
+            `;
+            
+            const response = await fetch('https://overpass-api.de/api/interpreter', {
+                method: 'POST',
+                body: query
+            });
+            
+            console.log('📊 Services response status:', response.status);
+            
+            if (!response.ok) throw new Error('Services API error');
+            
+            const data = await response.json();
+            console.log('✅ Essential services found:', data.elements.length);
+            
+            const facilities = {
+                banks: data.elements.filter(el => el.tags?.amenity === 'bank').length,
+                atms: data.elements.filter(el => el.tags?.amenity === 'atm').length,
+                markets: data.elements.filter(el => el.tags?.shop === 'supermarket' || el.tags?.amenity === 'marketplace').length,
+                postOffices: data.elements.filter(el => el.tags?.amenity === 'post_office').length,
+                police: data.elements.filter(el => el.tags?.amenity === 'police').length,
+                total: data.elements.length
+            };
+            
+            console.log('🎯 Services breakdown:', facilities);
+            return facilities;
         }
 
         // Mock air quality based on location (since free APIs have limitations)
@@ -314,47 +466,55 @@
         }
 
         // Calculate sustainability score using percentile-based system (0-100)
-        function calculateSustainabilityScore(greenData, airData, elevationData) {
+        function calculateSustainabilityScore(greenData, airData, elevationData, healthcareData, educationData, transportData, servicesData) {
             // Baseline values for 100th percentile (perfect score)
             const PERFECT_GREEN_SPACES = 15;  // 15+ green features within 1km
             const PERFECT_AQI = 25;           // AQI of 25 (excellent)
             const OPTIMAL_ELEVATION = 800;    // 800m elevation (good air quality, not too high)
+            const PERFECT_HEALTHCARE = 10;    // 10+ healthcare facilities within 2km
+            const PERFECT_EDUCATION = 8;      // 8+ education facilities within 2km
+            const PERFECT_TRANSPORT = 15;     // 15+ transport stops within 1.5km
+            const PERFECT_SERVICES = 20;      // 20+ essential services within 1.5km
             
             let totalScore = 0;
             
-            // Green spaces score (40% weight)
+            // Green spaces score (25% weight)
             const greenPercentile = Math.min(greenData.count / PERFECT_GREEN_SPACES, 1);
-            const greenScore = greenPercentile * 40;
+            const greenScore = greenPercentile * 25;
             totalScore += greenScore;
             
-            // Air quality score (40% weight)
+            // Air quality score (25% weight)
             const aqi = airData?.value;
             let airScore = 0;
             if (aqi !== null && aqi !== undefined) {
-                if (aqi <= PERFECT_AQI) airScore = 40;
-                else if (aqi <= 50) airScore = 35;
-                else if (aqi <= 100) airScore = 25;
-                else if (aqi <= 150) airScore = 15;
-                else if (aqi <= 200) airScore = 5;
+                if (aqi <= PERFECT_AQI) airScore = 25;
+                else if (aqi <= 50) airScore = 22;
+                else if (aqi <= 100) airScore = 18;
+                else if (aqi <= 150) airScore = 12;
+                else if (aqi <= 200) airScore = 6;
                 else airScore = 0;
             }
             totalScore += airScore;
             
-            // Elevation score (20% weight) - optimal around 800m
-            let elevationScore = 0;
-            if (elevationData?.elevation !== null && elevationData?.elevation !== undefined) {
-                const elevation = elevationData.elevation;
-                if (elevation >= 600 && elevation <= 1000) {
-                    elevationScore = 20; // Optimal range
-                } else if (elevation >= 300 && elevation <= 1500) {
-                    elevationScore = 15; // Good range
-                } else if (elevation >= 100 && elevation <= 2000) {
-                    elevationScore = 10; // Acceptable range
-                } else {
-                    elevationScore = 5; // Sea level or very high
-                }
-            }
-            totalScore += elevationScore;
+            // Healthcare access score (15% weight)
+            const healthcarePercentile = Math.min(healthcareData.total / PERFECT_HEALTHCARE, 1);
+            const healthcareScore = healthcarePercentile * 15;
+            totalScore += healthcareScore;
+            
+            // Education access score (10% weight)
+            const educationPercentile = Math.min(educationData.total / PERFECT_EDUCATION, 1);
+            const educationScore = educationPercentile * 10;
+            totalScore += educationScore;
+            
+            // Transport access score (15% weight)
+            const transportPercentile = Math.min(transportData.total / PERFECT_TRANSPORT, 1);
+            const transportScore = transportPercentile * 15;
+            totalScore += transportScore;
+            
+            // Essential services score (10% weight) - optimal around 800m
+            const servicesPercentile = Math.min(servicesData.total / PERFECT_SERVICES, 1);
+            const servicesScore = servicesPercentile * 10;
+            totalScore += servicesScore;
             
             return Math.round(totalScore);
         }
@@ -439,7 +599,7 @@
         }
         
         // Display results in sidebar
-        function displayResults(score, greenData, airData, elevationData, lat, lng) {
+        function displayResults(score, greenData, airData, elevationData, healthcareData, educationData, transportData, servicesData, lat, lng) {
             const aqi = airData?.value;
             const elevation = elevationData?.elevation;
             
@@ -452,19 +612,37 @@
                 <div class="metric-card">
                     <div class="metric-title">🌳 Green Spaces</div>
                     <p><strong>${greenData.count}</strong> features within 1km</p>
-                    <p style="font-size: 14px; opacity: 0.8;">Baseline: 15 for perfect score</p>
-                    <p style="font-size: 14px; opacity: 0.8;">Types: ${greenData.types.join(', ') || 'None detected'}</p>
+                    <p style="font-size: 12px; opacity: 0.8;">Types: ${greenData.types.join(', ') || 'None detected'}</p>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-title">🏥 Healthcare</div>
+                    <p><strong>${healthcareData.total}</strong> facilities within 2km</p>
+                    <p style="font-size: 12px; opacity: 0.8;">${healthcareData.hospitals} hospitals, ${healthcareData.clinics} clinics, ${healthcareData.pharmacies} pharmacies</p>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-title">🏫 Education</div>
+                    <p><strong>${educationData.total}</strong> facilities within 2km</p>
+                    <p style="font-size: 12px; opacity: 0.8;">${educationData.schools} schools, ${educationData.colleges} colleges, ${educationData.libraries} libraries</p>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-title">🚌 Transport</div>
+                    <p><strong>${transportData.total}</strong> stops within 1.5km</p>
+                    <p style="font-size: 12px; opacity: 0.8;">${transportData.busStops} bus stops, ${transportData.stations} stations</p>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-title">🏦 Services</div>
+                    <p><strong>${servicesData.total}</strong> facilities within 1.5km</p>
+                    <p style="font-size: 12px; opacity: 0.8;">${servicesData.banks} banks, ${servicesData.markets} markets, ${servicesData.police} police</p>
                 </div>
                 
                 <div class="metric-card">
                     <div class="metric-title">🌬️ Air Quality</div>
                     <p><strong>AQI:</strong> ${aqi || 'No data'}</p>
-                    ${aqi ? `<p style="color: ${aqi <= 50 ? '#4CAF50' : aqi <= 100 ? '#FF9800' : aqi <= 150 ? '#FF5722' : aqi <= 200 ? '#F44336' : aqi <= 300 ? '#9C27B0' : '#8D6E63'}; font-weight: 500;">${aqi <= 50 ? 'Good' : aqi <= 100 ? 'Moderate' : aqi <= 150 ? 'Unhealthy for Sensitive' : aqi <= 200 ? 'Unhealthy' : aqi <= 300 ? 'Very Unhealthy' : 'Hazardous'}</p>` : ''}
-                </div>
-                
-                <div class="metric-card">
-                    <div class="metric-title">⛰️ Elevation</div>
-                    <p><strong>${elevation ? elevation.toFixed(0) + 'm' : 'No data'}</strong> above sea level</p>
+                    ${aqi ? `<p style="color: ${aqi <= 50 ? '#4CAF50' : aqi <= 100 ? '#FF9800' : aqi <= 150 ? '#FF5722' : aqi <= 200 ? '#F44336' : aqi <= 300 ? '#9C27B0' : '#8D6E63'}; font-weight: 500; font-size: 12px;">${aqi <= 50 ? 'Good' : aqi <= 100 ? 'Moderate' : aqi <= 150 ? 'Unhealthy for Sensitive' : aqi <= 200 ? 'Unhealthy' : aqi <= 300 ? 'Very Unhealthy' : 'Hazardous'}</p>` : ''}
                 </div>
             `;
         }
