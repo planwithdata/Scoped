@@ -7,33 +7,121 @@
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <style>
-        body { margin: 0; font-family: Arial, sans-serif; }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8f9fa; }
         #container { display: flex; height: 100vh; }
-        #map { flex: 1; }
-        #sidebar { width: 300px; padding: 20px; background: #f5f5f5; overflow-y: auto; }
-        #location-btn { margin-bottom: 10px; padding: 10px; background: #007cbf; color: white; border: none; cursor: pointer; }
-        .score { font-size: 24px; font-weight: bold; margin: 10px 0; }
-        .loading { color: #666; font-style: italic; }
-        .error { color: #d32f2f; }
+        #map { flex: 1; position: relative; }
+        #sidebar { width: 320px; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; overflow-y: auto; box-shadow: -2px 0 10px rgba(0,0,0,0.1); }
+        
+        /* Buttons */
+        .btn { padding: 12px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease; margin: 5px 0; }
+        .btn-primary { background: #4CAF50; color: white; }
+        .btn-primary:hover { background: #45a049; transform: translateY(-2px); }
+        .btn-secondary { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); }
+        .btn-secondary:hover { background: rgba(255,255,255,0.3); }
+        
+        /* Map Controls */
+        .map-controls { position: absolute; top: 10px; left: 10px; z-index: 1000; }
+        .control-group { background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 10px; overflow: hidden; }
+        .control-btn { padding: 10px 12px; border: none; background: white; cursor: pointer; border-bottom: 1px solid #eee; width: 100%; text-align: left; }
+        .control-btn:hover { background: #f5f5f5; }
+        .control-btn:last-child { border-bottom: none; }
+        .control-btn.active { background: #007cbf; color: white; }
+        
+        /* Popups */
+        .popup-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; display: none; }
+        .popup-content { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 12px; max-width: 500px; max-height: 80vh; overflow-y: auto; }
+        .popup-close { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; color: #999; }
+        
+        /* Sidebar styling */
+        .score { font-size: 28px; font-weight: bold; margin: 15px 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .loading { color: #e0e0e0; font-style: italic; }
+        .error { color: #ffcdd2; background: rgba(244,67,54,0.2); padding: 10px; border-radius: 6px; }
+        .metric-card { background: rgba(255,255,255,0.1); padding: 15px; margin: 10px 0; border-radius: 8px; backdrop-filter: blur(10px); }
+        .metric-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+        
+        /* Previous clicks */
+        .click-item { background: rgba(255,255,255,0.1); padding: 8px 12px; margin: 5px 0; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .click-item:hover { background: rgba(255,255,255,0.2); }
     </style>
 </head>
 <body>
     <div id="container">
         <div id="map"></div>
-        <div id="sidebar">
-            <button id="location-btn">📍 Go to My Location</button>
-            <h3>Sustainability Score</h3>
-            <p>Click anywhere on the map to analyze sustainability metrics for that location.</p>
-            <div id="results">
-                <p><em>Click on the map to get started...</em></p>
+        <!-- Map Controls -->
+        <div class="map-controls">
+            <div class="control-group">
+                <button class="control-btn" id="help-btn">❓ How to Use</button>
+                <button class="control-btn" id="basemap-btn">🗺️ Basemap</button>
+                <button class="control-btn" id="toggle-clicks">👁️ Show Previous Clicks</button>
             </div>
-            <hr>
-            <small>
-                <strong>Note:</strong> This POC uses free APIs with rate limits:
-                <br>• OSM tiles: demo use only
-                <br>• Overpass API: ~10k queries/day
-                <br>• OpenAQ: 2000 requests/hour
-            </small>
+        </div>
+        
+        <div id="sidebar">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h2 style="margin: 0; font-size: 24px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">🌍 Scoped</h2>
+                <p style="margin: 5px 0; opacity: 0.9;">Sustainability Analysis</p>
+            </div>
+            
+            <button class="btn btn-primary" id="location-btn" style="width: 100%;">📍 Go to My Location</button>
+            
+            <div id="results">
+                <div style="text-align: center; padding: 20px; opacity: 0.8;">
+                    <p><em>Click anywhere on the map to analyze sustainability metrics</em></p>
+                </div>
+            </div>
+            
+            <div id="previous-clicks" style="display: none;">
+                <div class="metric-card">
+                    <div class="metric-title">📍 Previous Analyses</div>
+                    <div id="clicks-list"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Help Popup -->
+        <div id="help-popup" class="popup-overlay">
+            <div class="popup-content">
+                <span class="popup-close" onclick="closePopup('help-popup')">&times;</span>
+                <h3>🌍 How to Use Scoped</h3>
+                <p><strong>Getting Started:</strong></p>
+                <ul>
+                    <li>Click anywhere on the map to analyze that location</li>
+                    <li>Use "Go to My Location" to analyze your current area</li>
+                    <li>Toggle "Show Previous Clicks" to see all analyzed locations</li>
+                </ul>
+                
+                <p><strong>Sustainability Score Calculation (0-100):</strong></p>
+                <ul>
+                    <li><strong>Base Score:</strong> 50 points</li>
+                    <li><strong>Green Spaces:</strong> +3 points per park/forest within 1km (max +30)</li>
+                    <li><strong>Air Quality (AQI):</strong>
+                        <ul>
+                            <li>Good (0-50): +20 points</li>
+                            <li>Moderate (51-100): +10 points</li>
+                            <li>Unhealthy for Sensitive (101-150): -5 points</li>
+                            <li>Unhealthy+ (151+): -20 points</li>
+                        </ul>
+                    </li>
+                    <li><strong>Elevation:</strong> +1 point per 100m elevation (max +10)</li>
+                </ul>
+                
+                <p><strong>Data Sources:</strong></p>
+                <ul>
+                    <li>Green spaces: OpenStreetMap via Overpass API</li>
+                    <li>Air quality: Estimated based on location</li>
+                    <li>Elevation: Open-Elevation API</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Basemap Popup -->
+        <div id="basemap-popup" class="popup-overlay">
+            <div class="popup-content">
+                <span class="popup-close" onclick="closePopup('basemap-popup')">&times;</span>
+                <h3>🗺️ Select Basemap</h3>
+                <button class="btn btn-secondary" onclick="changeBasemap('osm')" style="width: 100%; margin: 5px 0;">OpenStreetMap</button>
+                <button class="btn btn-secondary" onclick="changeBasemap('satellite')" style="width: 100%; margin: 5px 0;">Google Satellite</button>
+            </div>
         </div>
     </div>
 
@@ -73,12 +161,16 @@
             }
         });
 
+        // Previous clicks storage
+        let previousClicks = JSON.parse(localStorage.getItem('scopedClicks') || '[]');
+        let showingPreviousClicks = false;
+        
         // Handle map clicks
         map.on('click', async (e) => {
             const { lng, lat } = e.lngLat;
             
             // Show loading state
-            document.getElementById('results').innerHTML = '<div class="loading">Analyzing location...</div>';
+            document.getElementById('results').innerHTML = '<div class="loading">🔄 Analyzing location...</div>';
             
             try {
                 // Fetch all data in parallel
@@ -91,8 +183,23 @@
                 // Calculate sustainability score (0-100)
                 const score = calculateSustainabilityScore(greenData, airData, elevationData);
                 
+                // Save to previous clicks
+                const clickData = {
+                    lat: lat.toFixed(4),
+                    lng: lng.toFixed(4),
+                    score,
+                    timestamp: new Date().toLocaleString(),
+                    greenCount: greenData.count,
+                    aqi: airData?.value,
+                    elevation: elevationData?.elevation
+                };
+                previousClicks.unshift(clickData);
+                if (previousClicks.length > 50) previousClicks = previousClicks.slice(0, 50);
+                localStorage.setItem('scopedClicks', JSON.stringify(previousClicks));
+                
                 // Display results
                 displayResults(score, greenData, airData, elevationData, lat, lng);
+                updatePreviousClicksList();
                 
                 // Add popup on map
                 new maplibregl.Popup()
@@ -101,7 +208,7 @@
                     .addTo(map);
                     
             } catch (error) {
-                document.getElementById('results').innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                document.getElementById('results').innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
             }
         });
 
@@ -216,32 +323,123 @@
             return Math.max(0, Math.min(100, Math.round(score)));
         }
 
+        // UI Event Handlers
+        document.getElementById('help-btn').addEventListener('click', () => {
+            document.getElementById('help-popup').style.display = 'block';
+        });
+        
+        document.getElementById('basemap-btn').addEventListener('click', () => {
+            document.getElementById('basemap-popup').style.display = 'block';
+        });
+        
+        document.getElementById('toggle-clicks').addEventListener('click', () => {
+            showingPreviousClicks = !showingPreviousClicks;
+            const clicksDiv = document.getElementById('previous-clicks');
+            const btn = document.getElementById('toggle-clicks');
+            
+            if (showingPreviousClicks) {
+                clicksDiv.style.display = 'block';
+                btn.classList.add('active');
+                btn.textContent = '👁️ Hide Previous Clicks';
+                updatePreviousClicksList();
+            } else {
+                clicksDiv.style.display = 'none';
+                btn.classList.remove('active');
+                btn.textContent = '👁️ Show Previous Clicks';
+            }
+        });
+        
+        function closePopup(popupId) {
+            document.getElementById(popupId).style.display = 'none';
+        }
+        
+        function changeBasemap(type) {
+            if (type === 'satellite') {
+                map.setStyle({
+                    version: 8,
+                    sources: {
+                        'satellite': {
+                            type: 'raster',
+                            tiles: ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'],
+                            tileSize: 256
+                        }
+                    },
+                    layers: [{ id: 'satellite', type: 'raster', source: 'satellite' }]
+                });
+            } else {
+                map.setStyle({
+                    version: 8,
+                    sources: {
+                        'osm': {
+                            type: 'raster',
+                            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                            tileSize: 256,
+                            attribution: '© OpenStreetMap contributors'
+                        }
+                    },
+                    layers: [{ id: 'osm', type: 'raster', source: 'osm' }]
+                });
+            }
+            closePopup('basemap-popup');
+        }
+        
+        function updatePreviousClicksList() {
+            const listDiv = document.getElementById('clicks-list');
+            if (previousClicks.length === 0) {
+                listDiv.innerHTML = '<p style="opacity: 0.7;">No previous analyses yet</p>';
+                return;
+            }
+            
+            listDiv.innerHTML = previousClicks.slice(0, 10).map(click => 
+                `<div class="click-item" onclick="flyToLocation(${click.lat}, ${click.lng})">
+                    <strong>Score: ${click.score}/100</strong><br>
+                    <small>${click.lat}, ${click.lng} • ${click.timestamp}</small>
+                </div>`
+            ).join('');
+        }
+        
+        function flyToLocation(lat, lng) {
+            map.flyTo({ center: [lng, lat], zoom: 12 });
+        }
+        
         // Display results in sidebar
         function displayResults(score, greenData, airData, elevationData, lat, lng) {
             const aqi = airData?.value;
             const elevation = elevationData?.elevation;
             
             document.getElementById('results').innerHTML = `
-                <div class="score" style="color: ${score > 70 ? 'green' : score > 40 ? 'orange' : 'red'}">
+                <div class="score" style="color: ${score > 70 ? '#4CAF50' : score > 40 ? '#FF9800' : '#F44336'}">
                     ${score}/100
                 </div>
-                <p><strong>Location:</strong> ${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
+                <p style="text-align: center; opacity: 0.9; margin-bottom: 20px;"><strong>📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}</strong></p>
                 
-                <h4>🌳 Green Spaces</h4>
-                <p>${greenData.count} features found within 1km</p>
-                <p>Types: ${greenData.types.join(', ') || 'None detected'}</p>
+                <div class="metric-card">
+                    <div class="metric-title">🌳 Green Spaces</div>
+                    <p><strong>${greenData.count}</strong> features within 1km</p>
+                    <p style="font-size: 14px; opacity: 0.8;">Types: ${greenData.types.join(', ') || 'None detected'}</p>
+                </div>
                 
-                <h4>🌬️ Air Quality</h4>
-                <p>AQI: ${aqi ? aqi : 'No data available'}</p>
-                ${aqi ? `<p style="color: ${aqi <= 50 ? 'green' : aqi <= 100 ? '#DAA520' : aqi <= 150 ? 'orange' : aqi <= 200 ? 'red' : aqi <= 300 ? 'purple' : 'maroon'}">Category: ${aqi <= 50 ? 'Good' : aqi <= 100 ? 'Moderate' : aqi <= 150 ? 'Unhealthy for Sensitive Groups' : aqi <= 200 ? 'Unhealthy' : aqi <= 300 ? 'Very Unhealthy' : 'Hazardous'}</p>` : ''}
+                <div class="metric-card">
+                    <div class="metric-title">🌬️ Air Quality</div>
+                    <p><strong>AQI:</strong> ${aqi || 'No data'}</p>
+                    ${aqi ? `<p style="color: ${aqi <= 50 ? '#4CAF50' : aqi <= 100 ? '#FF9800' : aqi <= 150 ? '#FF5722' : aqi <= 200 ? '#F44336' : aqi <= 300 ? '#9C27B0' : '#8D6E63'}; font-weight: 500;">${aqi <= 50 ? 'Good' : aqi <= 100 ? 'Moderate' : aqi <= 150 ? 'Unhealthy for Sensitive' : aqi <= 200 ? 'Unhealthy' : aqi <= 300 ? 'Very Unhealthy' : 'Hazardous'}</p>` : ''}
+                </div>
                 
-                <h4>⛰️ Elevation</h4>
-                <p>${elevation ? elevation.toFixed(0) + 'm above sea level' : 'No data available'}</p>
-                
-                <hr>
-                <small><em>Score factors: Green spaces (0-30), Air quality (-20 to +20), Elevation (0-10)</em></small>
+                <div class="metric-card">
+                    <div class="metric-title">⛰️ Elevation</div>
+                    <p><strong>${elevation ? elevation.toFixed(0) + 'm' : 'No data'}</strong> above sea level</p>
+                </div>
             `;
         }
+        // Initialize previous clicks on load
+        updatePreviousClicksList();
+        
+        // Close popups when clicking outside
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('popup-overlay')) {
+                e.target.style.display = 'none';
+            }
+        });
     </script>
 </body>
 </html>
