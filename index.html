@@ -160,6 +160,11 @@
           }
         }
 
+        // Compatibility wrapper
+        async function fetchAirQuality(lat, lon) {
+          return fetchAQI(lat, lon);
+        }
+
 
         // Fetch elevation using Open-Elevation API
         async function fetchElevation(lat, lng) {
