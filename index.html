@@ -8,38 +8,70 @@
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="config.js"></script>
     <style>
-        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8f9fa; }
-        #container { display: flex; height: 100vh; flex-direction: row; }
-        #map { flex: 1; position: relative; min-height: 50vh; }
-        #sidebar { width: 320px; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; overflow-y: auto; box-shadow: -2px 0 10px rgba(0,0,0,0.1); }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0e1a; color: #fff; overflow: hidden; }
         
-        /* Mobile and Tablet Responsive Design */
-        @media (max-width: 768px) {
-            #container { flex-direction: column; }
-            #sidebar { width: 100%; height: 50vh; padding: 15px; }
-            #map { height: 50vh; }
-            .map-controls { top: 5px; left: 5px; }
-            .control-btn { padding: 8px 10px; font-size: 14px; }
-            .metric-card { padding: 10px; margin: 8px 0; }
-            .metric-title { font-size: 16px; }
-            .score { font-size: 24px; }
+        /* Dashboard Grid Layout */
+        #dashboard { display: grid; height: 100vh; grid-template-areas: 
+            "env-top env-top climate climate social-top social-top"
+            "env-left map map map social-right"
+            "econ-left map map map econ-right"
+            "controls summary summary summary history";
+            grid-template-rows: 120px 1fr 1fr 100px;
+            grid-template-columns: 200px 1fr 1fr 1fr 200px;
+            gap: 8px; padding: 8px; }
+        
+        #map { grid-area: map; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+        
+        /* Panel Styling */
+        .panel { background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%); 
+                backdrop-filter: blur(20px); border-radius: 12px; padding: 12px; 
+                border: 1px solid rgba(255,255,255,0.1); overflow-y: auto; }
+        
+        /* Environmental Panels */
+        #env-top { grid-area: env-top; background: linear-gradient(135deg, #4ade80 20%, #22c55e 80%); }
+        #env-left { grid-area: env-left; background: linear-gradient(135deg, #4ade80 20%, #22c55e 80%); }
+        #climate { grid-area: climate; background: linear-gradient(135deg, #06b6d4 20%, #0891b2 80%); }
+        
+        /* Social Panels */
+        #social-top { grid-area: social-top; background: linear-gradient(135deg, #f59e0b 20%, #d97706 80%); }
+        #social-right { grid-area: social-right; background: linear-gradient(135deg, #f59e0b 20%, #d97706 80%); }
+        
+        /* Economic Panels */
+        #econ-left { grid-area: econ-left; background: linear-gradient(135deg, #8b5cf6 20%, #7c3aed 80%); }
+        #econ-right { grid-area: econ-right; background: linear-gradient(135deg, #8b5cf6 20%, #7c3aed 80%); }
+        
+        /* Bottom Panels */
+        #controls { grid-area: controls; background: linear-gradient(135deg, #374151 20%, #1f2937 80%); }
+        #summary { grid-area: summary; background: linear-gradient(135deg, #dc2626 20%, #991b1b 80%); }
+        #history { grid-area: history; background: linear-gradient(135deg, #374151 20%, #1f2937 80%); }
+        
+        /* Mobile Layout */
+        @media (max-width: 1024px) {
+            #dashboard { grid-template-areas: 
+                "summary summary"
+                "map map"
+                "env-panel social-panel"
+                "econ-panel controls";
+                grid-template-rows: 80px 1fr 200px 80px;
+                grid-template-columns: 1fr 1fr; }
+            #env-top, #env-left { grid-area: env-panel; }
+            #social-top, #social-right { grid-area: social-panel; }
+            #econ-left, #econ-right { grid-area: econ-panel; }
+            #climate, #history { display: none; }
         }
         
-        @media (max-width: 480px) {
-            #sidebar { padding: 10px; }
-            .metric-card { padding: 8px; margin: 5px 0; }
-            .metric-title { font-size: 14px; }
-            .score { font-size: 20px; }
-            .btn { padding: 10px 12px; font-size: 14px; }
-            .popup-content { padding: 20px; margin: 10px; max-width: 90vw; }
-        }
+        /* Dashboard Components */
+        .panel-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .metric-value { font-size: 24px; font-weight: 800; margin: 4px 0; }
+        .metric-label { font-size: 11px; opacity: 0.8; margin-bottom: 8px; }
+        .metric-bar { height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; margin: 4px 0; }
+        .metric-fill { height: 100%; background: rgba(255,255,255,0.8); border-radius: 2px; transition: width 0.5s ease; }
         
         /* Buttons */
-        .btn { padding: 12px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease; margin: 5px 0; }
-        .btn-primary { background: #4CAF50; color: white; }
-        .btn-primary:hover { background: #45a049; transform: translateY(-2px); }
-        .btn-secondary { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); }
-        .btn-secondary:hover { background: rgba(255,255,255,0.3); }
+        .btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; 
+               transition: all 0.3s ease; margin: 2px; font-size: 12px; }
+        .btn-primary { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); }
+        .btn-primary:hover { background: rgba(255,255,255,0.3); transform: scale(1.05); }
         .popup-btn { background: #f5f5f5; color: #333; border: 1px solid #ddd; }
         .popup-btn:hover { background: #e0e0e0; }
         
@@ -69,63 +101,135 @@
             .popup-content { padding: 15px; margin: 10px; max-width: calc(100vw - 20px); }
         }
         
-        /* Sidebar styling */
-        .score { font-size: 28px; font-weight: bold; margin: 15px 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
-        .loading { color: #e0e0e0; font-style: italic; }
-        .error { color: #ffcdd2; background: rgba(244,67,54,0.2); padding: 10px; border-radius: 6px; }
-        .metric-card { background: rgba(255,255,255,0.1); padding: 15px; margin: 10px 0; border-radius: 8px; backdrop-filter: blur(10px); }
-        .metric-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+        /* Status Indicators */
+        .loading { color: rgba(255,255,255,0.6); font-style: italic; font-size: 12px; }
+        .error { color: #fca5a5; background: rgba(239,68,68,0.2); padding: 8px; border-radius: 6px; font-size: 12px; }
         
-        @media (max-width: 768px) {
-            .metric-card { padding: 12px; margin: 8px 0; }
-            .metric-title { font-size: 16px; }
-            .score { font-size: 24px; margin: 10px 0; }
-        }
+        /* Score Display */
+        .overall-score { font-size: 48px; font-weight: 900; text-align: center; margin: 8px 0; 
+                        text-shadow: 2px 2px 8px rgba(0,0,0,0.5); }
+        .score-label { text-align: center; font-size: 12px; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px; }
         
-        @media (max-width: 480px) {
-            .metric-card { padding: 10px; margin: 5px 0; }
-            .metric-title { font-size: 14px; }
-            .score { font-size: 20px; margin: 8px 0; }
-        }
+        /* Click History */
+        .click-item { background: rgba(255,255,255,0.1); padding: 6px 8px; margin: 2px 0; 
+                     border-radius: 4px; cursor: pointer; font-size: 11px; transition: all 0.2s ease; }
+        .click-item:hover { background: rgba(255,255,255,0.2); transform: translateX(4px); }
         
-        /* Previous clicks */
-        .click-item { background: rgba(255,255,255,0.1); padding: 8px 12px; margin: 5px 0; border-radius: 6px; cursor: pointer; font-size: 14px; }
-        .click-item:hover { background: rgba(255,255,255,0.2); }
+        /* Color Coding */
+        .score-excellent { color: #10b981; }
+        .score-good { color: #84cc16; }
+        .score-fair { color: #eab308; }
+        .score-poor { color: #f97316; }
+        .score-critical { color: #ef4444; }
     </style>
 </head>
 <body>
-    <div id="container">
-        <div id="map"></div>
-        <!-- Map Controls -->
-        <div class="map-controls">
-            <div class="control-group">
-                <button class="control-btn" id="help-btn">❓ How to Use</button>
-                <button class="control-btn" id="basemap-btn">🗺️ Basemap</button>
-                <button class="control-btn" id="toggle-clicks">👁️ Show Previous Clicks</button>
+    <div id="dashboard">
+        <!-- Environmental Health Top Panel -->
+        <div id="env-top" class="panel">
+            <div class="panel-title">🌱 Environmental Health (40%)</div>
+            <div id="air-quality">
+                <div class="metric-label">Air Quality Index</div>
+                <div class="metric-value" id="aqi-value">--</div>
+                <div class="metric-bar"><div class="metric-fill" id="aqi-bar"></div></div>
             </div>
         </div>
         
-        <div id="sidebar">
-            <div style="text-align: center; margin-bottom: 15px;">
-                <h2 style="margin: 0; font-size: clamp(20px, 5vw, 24px); text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">🌍 Scoped</h2>
-                <p style="margin: 5px 0; opacity: 0.9; font-size: clamp(12px, 3vw, 14px);">Sustainability Analysis</p>
+        <!-- Climate Panel -->
+        <div id="climate" class="panel">
+            <div class="panel-title">🌡️ Climate Comfort</div>
+            <div id="temperature">
+                <div class="metric-label">Temperature</div>
+                <div class="metric-value" id="temp-value">--°C</div>
             </div>
-            
-            <button class="btn btn-primary" id="location-btn" style="width: 100%; font-size: clamp(12px, 3vw, 14px);">📍 Go to My Location</button>
-            
-            <div id="results">
-                <div style="text-align: center; padding: clamp(10px, 4vw, 20px); opacity: 0.8;">
-                    <p style="font-size: clamp(12px, 3vw, 14px);"><em>Click anywhere on the map to analyze sustainability metrics</em></p>
-                </div>
-            </div>
-            
-            <div id="previous-clicks" style="display: none;">
-                <div class="metric-card">
-                    <div class="metric-title">📍 Previous Analyses</div>
-                    <div id="clicks-list"></div>
-                </div>
+            <div id="humidity">
+                <div class="metric-label">Humidity</div>
+                <div class="metric-value" id="humidity-value">--%</div>
             </div>
         </div>
+        
+        <!-- Social Infrastructure Top Panel -->
+        <div id="social-top" class="panel">
+            <div class="panel-title">🏥 Social Infrastructure (35%)</div>
+            <div id="healthcare">
+                <div class="metric-label">Healthcare Access</div>
+                <div class="metric-value" id="healthcare-value">--</div>
+                <div class="metric-bar"><div class="metric-fill" id="healthcare-bar"></div></div>
+            </div>
+        </div>
+        
+        <!-- Environmental Left Panel -->
+        <div id="env-left" class="panel">
+            <div class="panel-title">🌳 Green Spaces</div>
+            <div id="green-spaces">
+                <div class="metric-label">Parks & Nature</div>
+                <div class="metric-value" id="green-value">--</div>
+                <div class="metric-bar"><div class="metric-fill" id="green-bar"></div></div>
+            </div>
+            <div id="water-bodies">
+                <div class="metric-label">Water Bodies</div>
+                <div class="metric-value" id="water-value">--</div>
+            </div>
+        </div>
+        
+        <!-- Map in Center -->
+        <div id="map"></div>
+        
+        <!-- Social Right Panel -->
+        <div id="social-right" class="panel">
+            <div class="panel-title">🚌 Accessibility</div>
+            <div id="education">
+                <div class="metric-label">Education</div>
+                <div class="metric-value" id="education-value">--</div>
+                <div class="metric-bar"><div class="metric-fill" id="education-bar"></div></div>
+            </div>
+            <div id="transport">
+                <div class="metric-label">Public Transport</div>
+                <div class="metric-value" id="transport-value">--</div>
+            </div>
+        </div>
+        
+        <!-- Economic Left Panel -->
+        <div id="econ-left" class="panel">
+            <div class="panel-title">🏪 Essential Services</div>
+            <div id="services">
+                <div class="metric-label">Daily Needs</div>
+                <div class="metric-value" id="services-value">--</div>
+                <div class="metric-bar"><div class="metric-fill" id="services-bar"></div></div>
+            </div>
+        </div>
+        
+        <!-- Economic Right Panel -->
+        <div id="econ-right" class="panel">
+            <div class="panel-title">⚡ Energy Potential</div>
+            <div id="energy">
+                <div class="metric-label">Solar Potential</div>
+                <div class="metric-value" id="energy-value">-- kWh/m²</div>
+                <div class="metric-bar"><div class="metric-fill" id="energy-bar"></div></div>
+            </div>
+        </div>
+        
+        <!-- Controls Panel -->
+        <div id="controls" class="panel">
+            <button class="btn btn-primary" id="location-btn">📍 My Location</button>
+            <button class="btn btn-primary" id="help-btn">❓ Help</button>
+            <button class="btn btn-primary" id="basemap-btn">🗺️ Basemap</button>
+            <button class="btn btn-primary" id="toggle-clicks">👁️ History</button>
+        </div>
+        
+        <!-- Overall Score Panel -->
+        <div id="summary" class="panel">
+            <div class="panel-title">🌍 Overall Sustainability Score</div>
+            <div class="overall-score" id="overall-score">--</div>
+            <div class="score-label" id="score-status">Click on map to analyze</div>
+        </div>
+        
+        <!-- History Panel -->
+        <div id="history" class="panel">
+            <div class="panel-title">📍 Recent Analyses</div>
+            <div id="clicks-list"></div>
+        </div>
+    </div>
         
         <!-- Help Popup -->
         <div id="help-popup" class="popup-overlay">
@@ -1053,19 +1157,16 @@
         
         document.getElementById('toggle-clicks').addEventListener('click', () => {
             showingPreviousClicks = !showingPreviousClicks;
-            const clicksDiv = document.getElementById('previous-clicks');
             const btn = document.getElementById('toggle-clicks');
             
             if (showingPreviousClicks) {
-                clicksDiv.style.display = 'block';
                 btn.classList.add('active');
-                btn.textContent = '👁️ Hide Previous Clicks';
+                btn.textContent = '👁️ Hide';
                 updatePreviousClicksList();
                 showPreviousClicksOnMap();
             } else {
-                clicksDiv.style.display = 'none';
                 btn.classList.remove('active');
-                btn.textContent = '👁️ Show Previous Clicks';
+                btn.textContent = '👁️ History';
                 hidePreviousClicksOnMap();
             }
         });
@@ -1227,89 +1328,64 @@
             previousClickMarkers = [];
         }
         
-        // Display results in sidebar
+        // Update dashboard panels with data
         function displayResults(score, greenData, airData, elevationData, weatherData = {}, climateData = {}, noiseData = {}, biodiversityData = {}, healthcareData = {}, educationData = {}, transportData = {}, servicesData = {}, lat, lng) {
             const aqi = airData?.value;
-            const elevation = elevationData?.elevation;
             const temperature = weatherData?.temperature;
             const humidity = weatherData?.humidity;
             const solarRadiation = climateData?.solarRadiation;
-            const noiseLevel = noiseData?.noiseLevel;
-            const biodiversityFeatures = (biodiversityData?.protectedAreas || 0) + (biodiversityData?.naturalAreas || 0);
             
-            document.getElementById('results').innerHTML = `
-                <div class="score" style="color: ${score > 70 ? '#4CAF50' : score > 40 ? '#FF9800' : '#F44336'}">
-                    ${score}/100
-                </div>
-                <p style="text-align: center; opacity: 0.9; margin-bottom: 20px;"><strong>📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}</strong></p>
-                
-                <div class="metric-card">
-                    <div class="metric-title">🌳 Green & Blue Infrastructure</div>
-                    <p><strong>Green:</strong> ${greenData.count} features within 1km</p>
-                    <p><strong>Water:</strong> ${greenData.waterCount || 0} bodies within 1km</p>
-                    <p style="font-size: 12px; opacity: 0.8;">Green: ${greenData.types.join(', ') || 'None'}</p>
-                    ${greenData.waterTypes && greenData.waterTypes.length > 0 ? `<p style="font-size: 12px; opacity: 0.8;">Water: ${greenData.waterTypes.join(', ')}</p>` : ''}
-                </div>
-                
-                <div class="metric-card">
-                    <div class="metric-title">🏥 Healthcare</div>
-                    <p><strong>${healthcareData?.total || 0}</strong> facilities within 2km</p>
-                    <p style="font-size: 12px; opacity: 0.8;">${healthcareData?.hospitals || 0} hospitals, ${healthcareData?.clinics || 0} clinics, ${healthcareData?.pharmacies || 0} pharmacies</p>
-                </div>
-                
-                <div class="metric-card">
-                    <div class="metric-title">🏫 Education</div>
-                    <p><strong>${educationData?.total || 0}</strong> facilities within 2km</p>
-                    <p style="font-size: 12px; opacity: 0.8;">${educationData?.schools || 0} schools, ${educationData?.colleges || 0} colleges, ${educationData?.libraries || 0} libraries</p>
-                </div>
-                
-                <div class="metric-card">
-                    <div class="metric-title">🚌 Transport</div>
-                    <p><strong>${transportData?.total || 0}</strong> stops within 1.5km</p>
-                    <p style="font-size: 12px; opacity: 0.8;">${transportData?.busStops || 0} bus stops, ${transportData?.stations || 0} stations</p>
-                </div>
-                
-                <div class="metric-card">
-                    <div class="metric-title">🏦 Services</div>
-                    <p><strong>${servicesData?.total || 0}</strong> facilities within 1.5km</p>
-                    <p style="font-size: 12px; opacity: 0.8;">${servicesData?.banks || 0} banks, ${servicesData?.markets || 0} markets, ${servicesData?.police || 0} police</p>
-                </div>
-                
-                <div class="metric-card">
-                    <div class="metric-title">🌤️ Weather</div>
-                    <p><strong>Temperature:</strong> ${temperature ? temperature.toFixed(1) + '°C' : 'No data'}</p>
-                    <p style="font-size: 12px; opacity: 0.8;">Humidity: ${humidity ? humidity + '%' : 'No data'}</p>
-                    ${weatherData?.description ? `<p style="font-size: 12px; opacity: 0.8; text-transform: capitalize;">${weatherData.description}</p>` : ''}
-                </div>
-                
-                <div class="metric-card">
-                    <div class="metric-title">☀️ Climate</div>
-                    <p><strong>Solar:</strong> ${solarRadiation ? solarRadiation.toFixed(1) + ' kWh/m²/day' : 'No data'}</p>
-                    <p style="font-size: 12px; opacity: 0.8;">Source: NASA POWER satellite data</p>
-                </div>
-                
-                <div class="metric-card">
-                    <div class="metric-title">🔊 Noise Environment</div>
-                    <p><strong>Noise Level:</strong> ${noiseLevel !== null ? noiseLevel + '/100' : 'No data'}</p>
-                    <p style="font-size: 12px; opacity: 0.8;">Roads: ${noiseData?.roadDensity || 0} | Railways: ${noiseData?.railwayCount || 0}</p>
-                    ${noiseLevel !== null ? `<p style="font-size: 12px; opacity: 0.8; color: ${noiseLevel <= 30 ? '#4CAF50' : noiseLevel <= 60 ? '#FF9800' : '#F44336'}">${noiseLevel <= 30 ? 'Quiet' : noiseLevel <= 60 ? 'Moderate' : 'Noisy'}</p>` : ''}
-                </div>
-                
-                <div class="metric-card">
-                    <div class="metric-title">🌿 Biodiversity</div>
-                    <p><strong>Protected Areas:</strong> ${biodiversityData?.protectedAreas || 0} within 5km</p>
-                    <p><strong>Natural Areas:</strong> ${biodiversityData?.naturalAreas || 0} within 5km</p>
-                    <p style="font-size: 12px; opacity: 0.8;">Total features: ${biodiversityFeatures}</p>
-                </div>
-                
-                <div class="metric-card">
-                    <div class="metric-title">🌬️ Air Quality</div>
-                    <p><strong>AQI:</strong> ${aqi || 'No data'}</p>
-                    ${aqi ? `<p style="color: ${aqi <= 50 ? '#4CAF50' : aqi <= 100 ? '#FF9800' : aqi <= 150 ? '#FF5722' : aqi <= 200 ? '#F44336' : aqi <= 300 ? '#9C27B0' : '#8D6E63'}; font-weight: 500; font-size: 12px;">${aqi <= 50 ? 'Good' : aqi <= 100 ? 'Moderate' : aqi <= 150 ? 'Unhealthy for Sensitive' : aqi <= 200 ? 'Unhealthy' : aqi <= 300 ? 'Very Unhealthy' : 'Hazardous'}</p>` : ''}
-                    ${airData?.source ? `<p style="font-size: 12px; opacity: 0.8;">Source: ${airData.source}</p>` : ''}
-                    ${airData?.components?.pm2_5 ? `<p style="font-size: 12px; opacity: 0.8;">PM2.5: ${airData.components.pm2_5.toFixed(1)} μg/m³</p>` : ''}
-                </div>
-            `;
+            // Update overall score
+            const scoreEl = document.getElementById('overall-score');
+            const statusEl = document.getElementById('score-status');
+            scoreEl.textContent = score;
+            scoreEl.className = `overall-score ${getScoreClass(score)}`;
+            statusEl.textContent = `${getScoreCategory(score)} • ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+            
+            // Update Air Quality
+            document.getElementById('aqi-value').textContent = aqi || '--';
+            updateBar('aqi-bar', aqi ? Math.max(0, 100 - aqi) : 0);
+            
+            // Update Climate
+            document.getElementById('temp-value').textContent = temperature ? `${temperature.toFixed(1)}°C` : '--°C';
+            document.getElementById('humidity-value').textContent = humidity ? `${humidity}%` : '--%';
+            
+            // Update Green Spaces
+            document.getElementById('green-value').textContent = greenData.count || '--';
+            updateBar('green-bar', Math.min(100, (greenData.count / 15) * 100));
+            document.getElementById('water-value').textContent = greenData.waterCount || '--';
+            
+            // Update Healthcare
+            const healthTotal = healthcareData?.total || 0;
+            document.getElementById('healthcare-value').textContent = healthTotal;
+            updateBar('healthcare-bar', Math.min(100, (healthTotal / 10) * 100));
+            
+            // Update Education
+            const eduTotal = educationData?.total || 0;
+            document.getElementById('education-value').textContent = eduTotal;
+            updateBar('education-bar', Math.min(100, (eduTotal / 8) * 100));
+            document.getElementById('transport-value').textContent = transportData?.total || '--';
+            
+            // Update Services
+            const servicesTotal = servicesData?.total || 0;
+            document.getElementById('services-value').textContent = servicesTotal;
+            updateBar('services-bar', Math.min(100, (servicesTotal / 20) * 100));
+            
+            // Update Energy
+            document.getElementById('energy-value').textContent = solarRadiation ? `${solarRadiation.toFixed(1)} kWh/m²` : '-- kWh/m²';
+            updateBar('energy-bar', solarRadiation ? Math.min(100, (solarRadiation / 6) * 100) : 0);
+        }
+        
+        function updateBar(barId, percentage) {
+            document.getElementById(barId).style.width = `${percentage}%`;
+        }
+        
+        function getScoreClass(score) {
+            if (score >= 80) return 'score-excellent';
+            else if (score >= 60) return 'score-good';
+            else if (score >= 40) return 'score-fair';
+            else if (score >= 20) return 'score-poor';
+            else return 'score-critical';
         }
         // Initialize previous clicks on load
         updatePreviousClicksList();
