@@ -51,25 +51,24 @@
             background: #45a049; transform: translateY(-50%) translateX(2px);
         }
         
-        /* Mobile-specific sidebar controls */
+        /* Floating Action Buttons */
+        .fab-container {
+            position: fixed; bottom: 80px; right: 20px; z-index: 999;
+            display: none; flex-direction: column; gap: 12px;
+        }
+        
+        .fab {
+            width: 56px; height: 56px; border-radius: 50%; border: none;
+            background: #4CAF50; color: white; font-size: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .fab:hover { transform: scale(1.1); background: #45a049; }
+        
         @media (max-width: 768px) {
-            .sidebar-handle {
-                right: 0; top: auto; bottom: -5px; left: 0; width: 100%; height: 10px;
-                cursor: ns-resize;
-            }
-            
-            .sidebar-toggle {
-                right: 50%; top: auto; bottom: -30px; transform: translateX(50%);
-                width: 60px; height: 30px; border-radius: 0 0 8px 8px;
-            }
-            
-            .sidebar-toggle:hover {
-                transform: translateX(50%) translateY(2px);
-            }
-            
-            .sidebar.minimized .sidebar-toggle {
-                bottom: -30px;
-            }
+            .fab-container { display: flex; }
         }
         
         .sidebar.minimized {
@@ -256,22 +255,48 @@
         .score-name { font-size: 14px; color: #333; }
         .score-value-small { font-size: 18px; font-weight: 700; }
         
-        /* Responsive Design */
+        /* Mobile UI - Bottom Sheet Design */
         @media (max-width: 768px) {
-            .app-container { flex-direction: column; }
-            .sidebar { width: 100%; height: 40vh; overflow-y: auto; }
-            .map-container { height: 60vh; }
-            .header { padding: 12px 15px; }
-            .header-left h1 { font-size: 20px; }
-            .header-left p { font-size: 12px; }
-            .icon-btn { width: 32px; height: 32px; font-size: 14px; }
-            .category-score-grid { grid-template-columns: 1fr; gap: 10px; }
-            .category-score-card { padding: 15px; }
-            .category-score-value { font-size: 24px; }
-            .metrics-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
-            .score-circle { width: 80px; height: 80px; font-size: 24px; }
-            .metric-card { padding: 8px; min-height: 70px; }
-            .metric-value { font-size: 16px; }
+            .app-container { flex-direction: column; position: relative; }
+            
+            .sidebar {
+                position: fixed; bottom: 0; left: 0; right: 0; width: 100%;
+                height: 60px; background: white; z-index: 1000;
+                border-radius: 20px 20px 0 0; box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+                transition: height 0.3s ease; overflow: hidden;
+            }
+            
+            .sidebar.expanded { height: 85vh; }
+            .sidebar.minimized { height: 0; }
+            
+            .sidebar-handle, .sidebar-toggle { display: none; }
+            
+            .header {
+                padding: 15px 20px; cursor: pointer; position: relative;
+                border-bottom: 1px solid #f0f0f0;
+            }
+            
+            .header::after {
+                content: ''; position: absolute; top: 8px; left: 50%;
+                transform: translateX(-50%); width: 40px; height: 4px;
+                background: #ddd; border-radius: 2px;
+            }
+            
+            .header-left h1 { font-size: 18px; margin: 0; }
+            .header-left p { font-size: 12px; margin: 0; }
+            .header-buttons { display: none; }
+            
+            .results { padding: 15px; height: calc(85vh - 80px); overflow-y: auto; }
+            
+            .map-container { height: 100vh; }
+            
+            .category-score-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+            .category-score-card { padding: 12px; }
+            .category-score-value { font-size: 20px; }
+            .metrics-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+            .score-circle { width: 70px; height: 70px; font-size: 20px; }
+            .metric-card { padding: 8px; min-height: 65px; }
+            .metric-value { font-size: 14px; }
         }
         
         @media (min-width: 1400px) {
@@ -339,7 +364,7 @@
             </div>
             
             <div class="results" id="results">
-                <div class="loading-state">
+                <div class="loading-state" id="initial-state">
                     <button class="btn btn-primary" id="analyze-location-btn">📍 Analyze My Location</button>
                     <div style="font-size: 48px; margin: 20px 0;">🗺️</div>
                     <h3>Click anywhere on the map</h3>
@@ -347,8 +372,12 @@
                 </div>
             </div>
             
-            <div class="sidebar-handle" id="sidebar-handle"></div>
-            <button class="sidebar-toggle" id="sidebar-toggle">‹</button>
+        </div>
+        
+        <!-- Mobile Floating Action Buttons -->
+        <div class="fab-container">
+            <button class="fab" id="mobile-location-btn" title="My Location">🎯</button>
+            <button class="fab" id="mobile-help-btn" title="Help">❓</button>
         </div>
         
         <!-- Map -->
@@ -435,48 +464,69 @@
         let previousClicks = JSON.parse(localStorage.getItem('scopedClicks') || '[]');
         let currentMarkers = [];
 
-        // Sidebar functionality
-        let isResizing = false;
+        // UI functionality
         const sidebar = document.querySelector('.sidebar');
-        const sidebarHandle = document.getElementById('sidebar-handle');
-        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const header = document.querySelector('.header');
+        let isDesktop = window.innerWidth > 768;
         
-        // Draggable resize
-        sidebarHandle.addEventListener('mousedown', (e) => {
-            isResizing = true;
-            document.addEventListener('mousemove', handleResize);
-            document.addEventListener('mouseup', stopResize);
-        });
-        
-        function handleResize(e) {
-            if (!isResizing) return;
+        // Desktop sidebar resize (keep existing functionality)
+        if (isDesktop) {
+            const sidebarHandle = document.getElementById('sidebar-handle');
+            const sidebarToggle = document.getElementById('sidebar-toggle');
+            let isResizing = false;
             
-            if (window.innerWidth <= 768) {
-                // Mobile: vertical resize
-                const newHeight = e.clientY;
-                if (newHeight >= 200 && newHeight <= window.innerHeight * 0.8) {
-                    sidebar.style.height = newHeight + 'px';
-                }
-            } else {
-                // Desktop: horizontal resize
+            if (sidebarHandle) {
+                sidebarHandle.addEventListener('mousedown', (e) => {
+                    isResizing = true;
+                    document.addEventListener('mousemove', handleResize);
+                    document.addEventListener('mouseup', stopResize);
+                });
+            }
+            
+            function handleResize(e) {
+                if (!isResizing) return;
                 const newWidth = e.clientX;
                 if (newWidth >= 250 && newWidth <= window.innerWidth * 0.8) {
                     sidebar.style.width = newWidth + 'px';
                 }
             }
+            
+            function stopResize() {
+                isResizing = false;
+                document.removeEventListener('mousemove', handleResize);
+                document.removeEventListener('mouseup', stopResize);
+            }
+            
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', () => {
+                    sidebar.classList.toggle('minimized');
+                    sidebarToggle.textContent = sidebar.classList.contains('minimized') ? '›' : '‹';
+                });
+            }
         }
         
-        function stopResize() {
-            isResizing = false;
-            document.removeEventListener('mousemove', handleResize);
-            document.removeEventListener('mouseup', stopResize);
+        // Mobile bottom sheet behavior
+        if (!isDesktop) {
+            header.addEventListener('click', () => {
+                sidebar.classList.toggle('expanded');
+            });
         }
         
-        // Toggle sidebar
-        sidebarToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('minimized');
-            sidebarToggle.textContent = sidebar.classList.contains('minimized') ? '›' : '‹';
-        });
+        // Mobile FAB buttons
+        const mobileLocationBtn = document.getElementById('mobile-location-btn');
+        const mobileHelpBtn = document.getElementById('mobile-help-btn');
+        
+        if (mobileLocationBtn) {
+            mobileLocationBtn.addEventListener('click', () => {
+                document.getElementById('analyze-location-btn').click();
+            });
+        }
+        
+        if (mobileHelpBtn) {
+            mobileHelpBtn.addEventListener('click', () => {
+                document.getElementById('help-popup').style.display = 'flex';
+            });
+        }
         
         // Event Listeners
         document.getElementById('location-btn').addEventListener('click', () => {
@@ -702,6 +752,13 @@
                 
                 // Display comprehensive results with all scores
                 displayResults(scores, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, businessData, climateResilienceData, lat, lng);
+                
+                // Auto-expand on mobile after analysis
+                if (window.innerWidth <= 768) {
+                    setTimeout(() => {
+                        sidebar.classList.add('expanded');
+                    }, 500);
+                }
                 
                 // Add marker
                 clearMarkers();
