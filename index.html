@@ -381,18 +381,20 @@
             }
             
             .header-minimize-btn {
-                display: none; width: 28px; height: 28px; border: 2px solid rgba(255,255,255,0.5);
-                background: transparent; color: white; border-radius: 4px;
-                font-size: 18px; cursor: pointer; align-items: center; justify-content: center;
-                transition: all 0.2s ease; padding: 0; line-height: 1;
-            }
-            
-            .header-minimize-btn:hover {
-                background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.8);
+                display: none;
             }
             
             @media (max-width: 768px) {
-                .header-minimize-btn { display: flex; }
+                .header-minimize-btn {
+                    display: flex; width: 28px; height: 28px; border: 2px solid rgba(255,255,255,0.5);
+                    background: transparent; color: white; border-radius: 4px;
+                    font-size: 18px; cursor: pointer; align-items: center; justify-content: center;
+                    transition: all 0.2s ease; padding: 0; line-height: 1;
+                }
+                
+                .header-minimize-btn:hover {
+                    background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.8);
+                }
             }
             
             .header-left h1 { font-size: 16px; margin: 0; }
