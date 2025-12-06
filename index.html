@@ -242,7 +242,7 @@
         
         /* Category score cards */
         .category-score-grid {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0;
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 20px 0;
         }
         
         .category-score-card {
@@ -912,8 +912,13 @@
                 if (previousClicks.length > 10) previousClicks = previousClicks.slice(0, 10);
                 localStorage.setItem('scopedClicks', JSON.stringify(previousClicks));
                 
-                // Display comprehensive results with all scores
-                displayResults(scores, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, businessData, climateResilienceData, lat, lng);
+                // Get location name
+                fetchLocationName(lat, lng).then(locationName => {
+                    // Display comprehensive results with all scores
+                    displayResults(scores, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, businessData, climateResilienceData, lat, lng, locationName);
+                }).catch(() => {
+                    displayResults(scores, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, businessData, climateResilienceData, lat, lng, null);
+                });
                 
                 // Auto-expand on mobile after analysis
                 if (window.innerWidth <= 768) {
@@ -948,45 +953,106 @@
         map.on('click', analyzeLocation);
 
         // Display results function with all scores
-        function displayResults(scores, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, businessData, climateResilienceData, lat, lng) {
+        function displayResults(scores, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, businessData, climateResilienceData, lat, lng, locationName) {
             const scoreColor = getScoreColor(scores.overall);
             const scoreCategory = getScoreCategory(scores.overall);
             
             document.getElementById('results').innerHTML = `
                 <div class="score-display">
+                    <h2>Sustainability Score</h2>
                     <div class="score-circle" style="background: ${scoreColor};">
                         ${scores.overall}
                     </div>
-                    <h2>${scoreCategory}</h2>
-                    <div class="score-text">📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}</div>
+                    <h3>${scoreCategory}</h3>
+                    <div class="score-text" id="location-text">📍 ${locationName || `${lat.toFixed(4)}, ${lng.toFixed(4)}`}<br><small style="opacity: 0.7;">${lat.toFixed(4)}, ${lng.toFixed(4)}</small></div>
                 </div>
                 
                 <!-- Category Scores -->
                 <div class="category-score-grid">
-                    <div class="category-score-card env-card expandable-card" onclick="toggleSection('env-details')">
+                    <div class="category-score-card env-card expandable-card" onclick="toggleCategoryExpansion('env-card')">
                         <div class="category-score-value" style="color: ${getScoreColor(scores.environmental)};">${scores.environmental}</div>
                         <div class="category-score-label">🌱 Environmental Health: ${scores.environmental}</div>
                         <div class="expand-hint">Click to see details</div>
                         <div class="metric-tooltip">Air quality, green spaces, climate comfort, and environmental health factors</div>
+                        <div class="category-details" id="env-card-details" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+                            <div class="metrics-grid" style="grid-template-columns: 1fr; gap: 8px;">
+                                <div class="metric-card" style="padding: 8px; min-height: auto;">
+                                    <div class="metric-title">🌬️ Air Quality: ${airData?.value || '--'}</div>
+                                    <div class="metric-subtitle">${airData?.pm25Concentration ? `PM2.5: ${airData.pm25Concentration.toFixed(1)}` : 'AQI Index'}</div>
+                                </div>
+                                <div class="metric-card" style="padding: 8px; min-height: auto;">
+                                    <div class="metric-title">🌳 Green Spaces: ${greenData.count || 0}</div>
+                                    <div class="metric-subtitle">Parks & Nature</div>
+                                </div>
+                                <div class="metric-card" style="padding: 8px; min-height: auto;">
+                                    <div class="metric-title">💧 Water Bodies: ${greenData.waterCount || 0}</div>
+                                    <div class="metric-subtitle">Rivers & Lakes</div>
+                                </div>
+                                <div class="metric-card" style="padding: 8px; min-height: auto;">
+                                    <div class="metric-title">🌡️ Temperature: ${weatherData?.temperature ? `${weatherData.temperature.toFixed(1)}°C` : '--'}</div>
+                                    <div class="metric-subtitle">${weatherData?.humidity ? `${weatherData.humidity}% RH` : 'Climate'}</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="category-score-card social-card expandable-card" onclick="toggleSection('social-details')">
+                    <div class="category-score-card social-card expandable-card" onclick="toggleCategoryExpansion('social-card')">
                         <div class="category-score-value" style="color: ${getScoreColor(scores.social)};">${scores.social}</div>
                         <div class="category-score-label">🏥 Social Infrastructure: ${scores.social}</div>
                         <div class="expand-hint">Click to see details</div>
                         <div class="metric-tooltip">Healthcare access, education facilities, public transport, and community services</div>
+                        <div class="category-details" id="social-card-details" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+                            <div class="metrics-grid" style="grid-template-columns: 1fr; gap: 8px;">
+                                <div class="metric-card" style="padding: 8px; min-height: auto;">
+                                    <div class="metric-title">🏥 Healthcare: ${healthcareData?.total || 0}</div>
+                                    <div class="metric-subtitle">${healthcareData?.hospitals || 0}H • ${healthcareData?.clinics || 0}C • ${healthcareData?.pharmacies || 0}P</div>
+                                </div>
+                                <div class="metric-card" style="padding: 8px; min-height: auto;">
+                                    <div class="metric-title">🏫 Education: ${educationData?.total || 0}</div>
+                                    <div class="metric-subtitle">${educationData?.schools || 0}S • ${educationData?.colleges || 0}C • ${educationData?.libraries || 0}L</div>
+                                </div>
+                                <div class="metric-card" style="padding: 8px; min-height: auto;">
+                                    <div class="metric-title">🚌 Transport: ${transportData?.total || 0}</div>
+                                    <div class="metric-subtitle">${transportData?.busStops || 0} bus • ${transportData?.stations || 0} rail</div>
+                                </div>
+                                <div class="metric-card" style="padding: 8px; min-height: auto;">
+                                    <div class="metric-title">💰 Economic Level: ${scores.economicLevel || '--'}</div>
+                                    <div class="metric-subtitle">Income proxy score</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="category-score-card economic-card expandable-card" onclick="toggleSection('economic-details')">
+                    <div class="category-score-card economic-card expandable-card" onclick="toggleCategoryExpansion('economic-card')">
                         <div class="category-score-value" style="color: ${getScoreColor(scores.economic)};">${scores.economic}</div>
                         <div class="category-score-label">🏪 Economic Sustainability: ${scores.economic}</div>
                         <div class="expand-hint">Click to see details</div>
                         <div class="metric-tooltip">Essential services, business infrastructure, energy potential, and economic opportunities</div>
+                        <div class="category-details" id="economic-card-details" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+                            <div class="metrics-grid" style="grid-template-columns: 1fr; gap: 8px;">
+                                <div class="metric-card" style="padding: 8px; min-height: auto;">
+                                    <div class="metric-title">🏦 Essential Services: ${servicesData?.total || 0}</div>
+                                    <div class="metric-subtitle">${servicesData?.banks || 0}B • ${servicesData?.markets || 0}M • ${servicesData?.police || 0}P</div>
+                                </div>
+                                <div class="metric-card" style="padding: 8px; min-height: auto;">
+                                    <div class="metric-title">☀️ Solar Energy: ${climateData?.solarRadiation ? climateData.solarRadiation.toFixed(1) : '--'}</div>
+                                    <div class="metric-subtitle">kWh/m²/day</div>
+                                </div>
+                                <div class="metric-card" style="padding: 8px; min-height: auto;">
+                                    <div class="metric-title">🏢 Business Hub: ${businessData?.total || 0}</div>
+                                    <div class="metric-subtitle">${businessData?.offices || 0}O • ${businessData?.coworking || 0}C • ${businessData?.commercial || 0}S</div>
+                                </div>
+                                <div class="metric-card" style="padding: 8px; min-height: auto;">
+                                    <div class="metric-title">💼 Employment: ${scores.employmentOpportunity || '--'}</div>
+                                    <div class="metric-subtitle">Job market score</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
                 <!-- Additional Neighborhood Scores -->
-                <div class="additional-scores expandable-card" onclick="toggleSection('insights-details')">
-                    <div class="additional-scores-title">🏡 Neighborhood Insights</div>
-                    <div class="expand-hint">Click to see all insights</div>
+                <div class="additional-scores expandable-card" onclick="toggleCategoryExpansion('neighborhood-scores')">
+                    <div class="additional-scores-title">🏡 Neighborhood Scores</div>
+                    <div class="expand-hint">Click to see raw data</div>
                     <div class="metric-tooltip">Detailed scores for air quality, traffic, green living, health, energy, and climate resilience</div>
                     <div class="score-row">
                         <span class="score-name">🌬️ Air Quality Index</span>
@@ -1012,201 +1078,36 @@
                         <span class="score-name">🌊 Climate Resilience</span>
                         <span class="score-value-small" style="color: ${getScoreColor(scores.climateResilience)};">${scores.climateResilience}/100</span>
                     </div>
-                </div>
-                
-                <!-- Environmental Health Details -->
-                <div class="category-section env-section" id="env-details" style="display: none;">
-                    <div class="category-title">🌱 Environmental Health Details</div>
-                    <div class="metrics-grid">
-                        <div class="metric-card">
-                            <div class="metric-tooltip">How polluted the air is - Lower numbers mean cleaner, healthier air to breathe</div>
-                            <div class="metric-title">🌬️ Air Quality</div>
-                            <div class="metric-value">${airData?.value || '--'}</div>
-                            <div class="metric-subtitle">${airData?.pm25Concentration ? `PM2.5: ${airData.pm25Concentration.toFixed(1)}` : 'AQI Index'}</div>
-                        </div>
-                        
-                        <div class="metric-card">
-                            <div class="metric-tooltip">Number of parks and green areas nearby - More green spaces mean better air, relaxation spots, and mental health</div>
-                            <div class="metric-title">🌳 Green Spaces</div>
-                            <div class="metric-value">${greenData.count || 0}</div>
-                            <div class="metric-subtitle">Parks & Nature</div>
-                        </div>
-                        
-                        <div class="metric-card">
-                            <div class="metric-tooltip">Rivers, lakes, and water features nearby - Water bodies cool the air, reduce pollution, and provide recreation</div>
-                            <div class="metric-title">💧 Water Bodies</div>
-                            <div class="metric-value">${greenData.waterCount || 0}</div>
-                            <div class="metric-subtitle">Rivers & Lakes</div>
-                        </div>
-                        
-                        <div class="metric-card">
-                            <div class="metric-tooltip">Current temperature - Comfortable temperatures (18-26°C) are best for daily life and energy efficiency</div>
-                            <div class="metric-title">🌡️ Temperature</div>
-                            <div class="metric-value">${weatherData?.temperature ? `${weatherData.temperature.toFixed(1)}°C` : '--'}</div>
-                            <div class="metric-subtitle">${weatherData?.humidity ? `${weatherData.humidity}% RH` : 'Climate'}</div>
-                        </div>
-                        
-                        <div class="metric-card">
-                            <div class="metric-tooltip">How noisy the area is - Lower noise levels mean better sleep, concentration, and overall quality of life</div>
-                            <div class="metric-title">🔊 Noise Level</div>
-                            <div class="metric-value">${noiseData?.noiseLevel !== null ? noiseData.noiseLevel : '--'}</div>
-                            <div class="metric-subtitle">${noiseData?.roadDensity || 0} roads nearby</div>
-                        </div>
-                        
-                        <div class="metric-card">
-                            <div class="metric-tooltip">Protected natural areas and wildlife habitats - More biodiversity means healthier ecosystems and cleaner environment</div>
-                            <div class="metric-title">🌿 Biodiversity</div>
-                            <div class="metric-value">${(biodiversityData?.protectedAreas || 0) + (biodiversityData?.naturalAreas || 0)}</div>
-                            <div class="metric-subtitle">Protected areas</div>
-                        </div>
-                        
-                        <div class="metric-card">
-                            <div class="metric-tooltip">Height above sea level - Higher elevations often have cooler temperatures and lower flood risk</div>
-                            <div class="metric-title">⛰️ Elevation</div>
-                            <div class="metric-value">${elevationData?.elevation ? `${elevationData.elevation}m` : '--'}</div>
-                            <div class="metric-subtitle">Above sea level</div>
-                        </div>
-                        
-                        ${weatherData?.pressure ? `
-                        <div class="metric-card">
-                            <div class="metric-title">🌪️ Pressure</div>
-                            <div class="metric-value">${weatherData.pressure}</div>
-                            <div class="metric-subtitle">hPa</div>
-                        </div>` : ''}
-                        
-                        ${weatherData?.windSpeed ? `
-                        <div class="metric-card">
-                            <div class="metric-title">🌬️ Wind</div>
-                            <div class="metric-value">${weatherData.windSpeed.toFixed(1)}</div>
-                            <div class="metric-subtitle">m/s</div>
-                        </div>` : ''}
-                    </div>
-                </div>
-                
-                <!-- Social Infrastructure Details -->
-                <div class="category-section social-section" id="social-details" style="display: none;">
-                    <div class="category-title">🏥 Social Infrastructure Details</div>
-                    <div class="metrics-grid">
-                        <div class="metric-card">
-                            <div class="metric-tooltip">Hospitals, clinics, and pharmacies nearby - More healthcare facilities mean better access to medical care when needed</div>
-                            <div class="metric-title">🏥 Healthcare</div>
-                            <div class="metric-value">${healthcareData?.total || 0}</div>
-                            <div class="metric-subtitle">${healthcareData?.hospitals || 0}H • ${healthcareData?.clinics || 0}C • ${healthcareData?.pharmacies || 0}P</div>
-                        </div>
-                        
-                        <div class="metric-card">
-                            <div class="metric-tooltip">Schools, colleges, and libraries nearby - More educational facilities mean better learning opportunities for all ages</div>
-                            <div class="metric-title">🏫 Education</div>
-                            <div class="metric-value">${educationData?.total || 0}</div>
-                            <div class="metric-subtitle">${educationData?.schools || 0}S • ${educationData?.colleges || 0}C • ${educationData?.libraries || 0}L</div>
-                        </div>
-                        
-                        <div class="metric-card">
-                            <div class="metric-tooltip">Bus stops and train stations nearby - More public transport options mean easier, cheaper, and greener travel</div>
-                            <div class="metric-title">🚌 Transport</div>
-                            <div class="metric-value">${transportData?.total || 0}</div>
-                            <div class="metric-subtitle">${transportData?.busStops || 0} bus • ${transportData?.stations || 0} rail</div>
-                        </div>
-                        
-                        <div class="metric-card">
-                            <div class="metric-tooltip">Estimated income level of the area - Higher scores suggest more affluent neighborhoods with better services</div>
-                            <div class="metric-title">💰 Economic Level</div>
-                            <div class="metric-value">${scores.economicLevel || '--'}</div>
-                            <div class="metric-subtitle">Income proxy score</div>
+                    <div class="category-details" id="neighborhood-scores-details" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+                        <div class="metrics-grid" style="grid-template-columns: repeat(2, 1fr); gap: 8px;">
+                            <div class="metric-card" style="padding: 8px; min-height: auto;">
+                                <div class="metric-title">🌬️ Air Quality: ${scores.airQuality}</div>
+                                <div class="metric-subtitle">AQI: ${airData?.value || '--'}, PM2.5: ${airData?.pm25Concentration ? airData.pm25Concentration.toFixed(1) : '--'}</div>
+                            </div>
+                            <div class="metric-card" style="padding: 8px; min-height: auto;">
+                                <div class="metric-title">🚗 Traffic: ${scores.traffic}</div>
+                                <div class="metric-subtitle">Roads: ${noiseData?.roadDensity || 0}, Transport: ${transportData?.total || 0}</div>
+                            </div>
+                            <div class="metric-card" style="padding: 8px; min-height: auto;">
+                                <div class="metric-title">🌳 Green Living: ${scores.greenLiving}</div>
+                                <div class="metric-subtitle">Parks: ${greenData.count || 0}, Water: ${greenData.waterCount || 0}, Bio: ${(biodiversityData?.protectedAreas || 0) + (biodiversityData?.naturalAreas || 0)}</div>
+                            </div>
+                            <div class="metric-card" style="padding: 8px; min-height: auto;">
+                                <div class="metric-title">🏥 Health & Safety: ${scores.healthSafety}</div>
+                                <div class="metric-subtitle">Healthcare: ${healthcareData?.total || 0}, Police: ${servicesData?.police || 0}</div>
+                            </div>
+                            <div class="metric-card" style="padding: 8px; min-height: auto;">
+                                <div class="metric-title">⚡ Energy & Climate: ${scores.energyClimate}</div>
+                                <div class="metric-subtitle">Solar: ${climateData?.solarRadiation ? climateData.solarRadiation.toFixed(1) : '--'}, Temp: ${weatherData?.temperature ? weatherData.temperature.toFixed(1) + '°C' : '--'}</div>
+                            </div>
+                            <div class="metric-card" style="padding: 8px; min-height: auto;">
+                                <div class="metric-title">🌊 Climate Resilience: ${scores.climateResilience}</div>
+                                <div class="metric-subtitle">Flood: ${climateResilienceData?.floodRisk || '--'}, Elevation: ${elevationData?.elevation ? elevationData.elevation + 'm' : '--'}</div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                
-                <!-- Economic Sustainability Details -->
-                <div class="category-section economic-section" id="economic-details" style="display: none;">
-                    <div class="category-title">🏪 Economic Sustainability Details</div>
-                    <div class="metrics-grid">
-                        <div class="metric-card">
-                            <div class="metric-tooltip">Banks, markets, and police stations nearby - Essential services that make daily life convenient and safe</div>
-                            <div class="metric-title">🏦 Essential Services</div>
-                            <div class="metric-value">${servicesData?.total || 0}</div>
-                            <div class="metric-subtitle">${servicesData?.banks || 0}B • ${servicesData?.markets || 0}M • ${servicesData?.police || 0}P</div>
-                        </div>
-                        
-                        <div class="metric-card">
-                            <div class="metric-tooltip">Solar energy potential - Higher values mean more sunshine for solar panels, lower electricity bills, and cleaner energy</div>
-                            <div class="metric-title">☀️ Solar Energy</div>
-                            <div class="metric-value">${climateData?.solarRadiation ? climateData.solarRadiation.toFixed(1) : '--'}</div>
-                            <div class="metric-subtitle">kWh/m²/day</div>
-                        </div>
-                        
-                        <div class="metric-card">
-                            <div class="metric-tooltip">Offices, coworking spaces, and commercial areas nearby - More business activity means a thriving local economy</div>
-                            <div class="metric-title">🏢 Business Hub</div>
-                            <div class="metric-value">${businessData?.total || 0}</div>
-                            <div class="metric-subtitle">${businessData?.offices || 0}O • ${businessData?.coworking || 0}C • ${businessData?.commercial || 0}S</div>
-                        </div>
-                        
-                        <div class="metric-card">
-                            <div class="metric-tooltip">Job opportunities in the area - Higher scores mean more places to work, from offices to shops to industrial areas</div>
-                            <div class="metric-title">💼 Employment</div>
-                            <div class="metric-value">${scores.employmentOpportunity || '--'}</div>
-                            <div class="metric-subtitle">Job market score</div>
-                        </div>
-                        
-                        <div class="metric-card">
-                            <div class="metric-tooltip">Risk of flooding - Lower numbers mean better protection from floods and water damage</div>
-                            <div class="metric-title">🌊 Flood Risk</div>
-                            <div class="metric-value">${climateResilienceData?.floodRisk !== null ? climateResilienceData.floodRisk : '--'}</div>
-                            <div class="metric-subtitle">Climate resilience</div>
-                        </div>
-                        
-                        ${servicesData?.atms ? `
-                        <div class="metric-card">
-                            <div class="metric-title">🏧 ATMs</div>
-                            <div class="metric-value">${servicesData.atms}</div>
-                            <div class="metric-subtitle">Cash access</div>
-                        </div>` : ''}
-                    </div>
-                </div>
-                
-                <!-- Neighborhood Insights Details -->
-                <div class="category-section" id="insights-details" style="display: none; background: linear-gradient(135deg, #e3f2fd, #f1f8e9); border-left-color: #2196f3;">
-                    <div class="category-title">🏡 Neighborhood Insights Details</div>
-                    <div class="metrics-grid">
-                        <div class="metric-card">
-                            <div class="metric-tooltip">How clean the air is - Higher scores mean healthier air to breathe</div>
-                            <div class="metric-title">🌬️ Air Quality</div>
-                            <div class="metric-value">${scores.airQuality}</div>
-                            <div class="metric-subtitle">Breathing safety</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-tooltip">How easy it is to get around - Higher scores mean less traffic and better transport</div>
-                            <div class="metric-title">🚗 Traffic & Access</div>
-                            <div class="metric-value">${scores.traffic}</div>
-                            <div class="metric-subtitle">Getting around</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-tooltip">How green and natural the area is - Higher scores mean more parks and nature</div>
-                            <div class="metric-title">🌳 Green Living</div>
-                            <div class="metric-value">${scores.greenLiving}</div>
-                            <div class="metric-subtitle">Nature access</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-tooltip">How safe and healthy the area is - Higher scores mean better healthcare and safety</div>
-                            <div class="metric-title">🏥 Health & Safety</div>
-                            <div class="metric-value">${scores.healthSafety}</div>
-                            <div class="metric-subtitle">Wellbeing</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-tooltip">Energy efficiency and climate comfort - Higher scores mean better renewable energy and comfortable weather</div>
-                            <div class="metric-title">⚡ Energy & Climate</div>
-                            <div class="metric-value">${scores.energyClimate}</div>
-                            <div class="metric-subtitle">Energy potential</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-tooltip">How well the area handles climate change - Higher scores mean better protection from floods, droughts, and heat</div>
-                            <div class="metric-title">🌊 Climate Resilience</div>
-                            <div class="metric-value">${scores.climateResilience}</div>
-                            <div class="metric-subtitle">Future-ready</div>
-                        </div>
-                    </div>
-                </div>
+
             `;
         }
 
@@ -1357,6 +1258,13 @@
             const section = document.getElementById(sectionId);
             if (section) {
                 section.style.display = section.style.display === 'none' ? 'block' : 'none';
+            }
+        }
+        
+        function toggleCategoryExpansion(cardId) {
+            const details = document.getElementById(cardId + '-details');
+            if (details) {
+                details.style.display = details.style.display === 'none' ? 'block' : 'none';
             }
         }
 
@@ -1944,6 +1852,27 @@
             else economicScore += commercial * 7;
             
             return Math.min(100, economicScore);
+        }
+        
+        async function fetchLocationName(lat, lng) {
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=1`);
+                if (!response.ok) throw new Error('Geocoding failed');
+                
+                const data = await response.json();
+                const addr = data.address || {};
+                
+                let locationParts = [];
+                if (addr.neighbourhood || addr.suburb) locationParts.push(addr.neighbourhood || addr.suburb);
+                if (addr.city || addr.town || addr.village) locationParts.push(addr.city || addr.town || addr.village);
+                if (addr.state) locationParts.push(addr.state);
+                if (addr.country) locationParts.push(addr.country);
+                
+                return locationParts.length > 0 ? locationParts.join(', ') : null;
+            } catch (error) {
+                console.error('Location name fetch failed:', error.message);
+                return null;
+            }
         }
         
         async function fetchClimateResilience(lat, lng, elevationData, weatherData) {
