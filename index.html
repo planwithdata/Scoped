@@ -59,11 +59,11 @@
         
         .sidebar-toggle-btn {
             position: fixed; top: 20px; right: 20px; z-index: 999;
-            width: 48px; height: 48px; border-radius: 50%; border: none;
-            background: #2196F3; color: white; font-size: 18px;
+            padding: 8px 12px; border-radius: 20px; border: none;
+            background: #2196F3; color: white; font-size: 12px;
             box-shadow: 0 3px 10px rgba(0,0,0,0.25); cursor: pointer;
             display: none; align-items: center; justify-content: center;
-            transition: all 0.2s ease;
+            transition: all 0.2s ease; white-space: nowrap;
         }
         
         .sidebar-toggle-btn:hover { transform: scale(1.05); background: #1976D2; }
@@ -208,9 +208,9 @@
         .metric-tooltip {
             position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
             background: rgba(0,0,0,0.9); color: white; padding: 8px 12px;
-            border-radius: 6px; font-size: 12px; white-space: nowrap;
+            border-radius: 6px; font-size: 12px; max-width: 200px; white-space: normal;
             opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
-            z-index: 1000; margin-bottom: 5px;
+            z-index: 1000; margin-bottom: 5px; text-align: center;
         }
         
         .metric-tooltip::after {
@@ -396,6 +396,10 @@
                         🗺️
                         <div class="tooltip">Change Map View</div>
                     </button>
+                    <button class="icon-btn" id="sources-btn">
+                        📋
+                        <div class="tooltip">Data Sources</div>
+                    </button>
                 </div>
             </div>
             
@@ -411,10 +415,13 @@
         </div>
         
         <!-- Mobile Floating Action Buttons -->
-        <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" title="Toggle Sidebar">↕️</button>
+        <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" title="Minimize Sidebar">↕️ Minimize Sidebar</button>
         <div class="fab-container">
-            <button class="fab" id="mobile-location-btn" title="My Location">🎯</button>
+            <button class="fab" id="mobile-history-btn" title="View History">📊</button>
+            <button class="fab" id="mobile-basemap-btn" title="Choose Map View">🗺️</button>
+            <button class="fab" id="mobile-location-btn" title="Show Current Location">🎯</button>
             <button class="fab" id="mobile-help-btn" title="Help">❓</button>
+            <button class="fab" id="mobile-sources-btn" title="Data Sources">📋</button>
         </div>
         
         <!-- Map -->
@@ -470,6 +477,36 @@
             <span class="popup-close" onclick="closePopup('history-popup')">&times;</span>
             <h3>📊 Analysis History</h3>
             <div id="history-list"></div>
+        </div>
+    </div>
+    
+    <!-- Data Sources Popup -->
+    <div id="sources-popup" class="popup-overlay">
+        <div class="popup-content">
+            <span class="popup-close" onclick="closePopup('sources-popup')">&times;</span>
+            <h2>📋 Data Sources</h2>
+            
+            <h3>🌍 Environmental Data</h3>
+            <ul>
+                <li><strong>OpenWeatherMap API</strong> - Real-time air quality (PM2.5, AQI) and weather data</li>
+                <li><strong>NASA POWER</strong> - Solar radiation and climate data</li>
+                <li><strong>Open-Elevation API</strong> - Elevation data for flood risk assessment</li>
+            </ul>
+            
+            <h3>🏢 Infrastructure Data</h3>
+            <ul>
+                <li><strong>OpenStreetMap Overpass API</strong> - Healthcare facilities, schools, transport, businesses</li>
+                <li><strong>OSM Data</strong> - Green spaces, parks, water bodies, roads, protected areas</li>
+            </ul>
+            
+            <h3>📊 Research Standards</h3>
+            <ul>
+                <li><strong>WHO Guidelines</strong> - Air quality and health standards</li>
+                <li><strong>UN SDGs</strong> - Sustainability indicators and thresholds</li>
+                <li><strong>Urban Planning Research</strong> - 15-minute city principles, accessibility standards</li>
+            </ul>
+            
+            <button class="btn btn-primary" onclick="closePopup('sources-popup')" style="margin-top: 20px;">Close</button>
         </div>
     </div>
 
@@ -596,6 +633,30 @@
             });
         }
         
+        // Additional mobile FAB buttons
+        const mobileHistoryBtn = document.getElementById('mobile-history-btn');
+        const mobileBasemapBtn = document.getElementById('mobile-basemap-btn');
+        const mobileSourcesBtn = document.getElementById('mobile-sources-btn');
+        
+        if (mobileHistoryBtn) {
+            mobileHistoryBtn.addEventListener('click', () => {
+                updateHistoryList();
+                document.getElementById('history-popup').style.display = 'flex';
+            });
+        }
+        
+        if (mobileBasemapBtn) {
+            mobileBasemapBtn.addEventListener('click', () => {
+                document.getElementById('basemap-popup').style.display = 'flex';
+            });
+        }
+        
+        if (mobileSourcesBtn) {
+            mobileSourcesBtn.addEventListener('click', () => {
+                document.getElementById('sources-popup').style.display = 'flex';
+            });
+        }
+        
         // Show user location with blue dot (no analysis)
         function showUserLocation() {
             if (navigator.geolocation) {
@@ -706,6 +767,10 @@
 
         document.getElementById('basemap-btn').addEventListener('click', () => {
             document.getElementById('basemap-popup').style.display = 'flex';
+        });
+        
+        document.getElementById('sources-btn').addEventListener('click', () => {
+            document.getElementById('sources-popup').style.display = 'flex';
         });
 
         // Analysis function (shared by map click and analyze location button)
