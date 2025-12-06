@@ -349,8 +349,8 @@
             
             .score-display { padding: 15px 10px; margin-bottom: 10px; }
             .score-circle { width: 60px; height: 60px; font-size: 18px; }
-            .category-score-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 0; }
-            .category-score-card { padding: 8px; }
+            .category-score-grid { grid-template-columns: repeat(3, 1fr); gap: 3px; padding: 0; }
+            .category-score-card { padding: 6px; }
             .additional-scores { margin: 10px 0; }
             .category-score-value { font-size: 18px; }
             .category-score-label { font-size: 9px; }
@@ -1094,30 +1094,6 @@
                         ${scores.neighborhoodOverall}/100
                     </div>
                     <div class="category-details" id="neighborhood-scores-details" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
-                    <div class="score-row">
-                        <span class="score-name">🌬️ Air Quality Index</span>
-                        <span class="score-value-small" style="color: ${getScoreColor(scores.airQuality)};">${scores.airQuality}/100</span>
-                    </div>
-                    <div class="score-row">
-                        <span class="score-name">🚗 Traffic & Accessibility</span>
-                        <span class="score-value-small" style="color: ${getScoreColor(scores.traffic)};">${scores.traffic}/100</span>
-                    </div>
-                    <div class="score-row">
-                        <span class="score-name">🌳 Green Living Index</span>
-                        <span class="score-value-small" style="color: ${getScoreColor(scores.greenLiving)};">${scores.greenLiving}/100</span>
-                    </div>
-                    <div class="score-row">
-                        <span class="score-name">🏥 Health & Safety</span>
-                        <span class="score-value-small" style="color: ${getScoreColor(scores.healthSafety)};">${scores.healthSafety}/100</span>
-                    </div>
-                    <div class="score-row">
-                        <span class="score-name">⚡ Energy & Climate</span>
-                        <span class="score-value-small" style="color: ${getScoreColor(scores.energyClimate)};">${scores.energyClimate}/100</span>
-                    </div>
-                    <div class="score-row">
-                        <span class="score-name">🌊 Climate Resilience</span>
-                        <span class="score-value-small" style="color: ${getScoreColor(scores.climateResilience)};">${scores.climateResilience}/100</span>
-                    </div>
                         <div class="metrics-grid" style="grid-template-columns: repeat(2, 1fr); gap: 8px;">
                             <div class="metric-card" style="padding: 8px; min-height: auto;">
                                 <div class="metric-tooltip">Air quality livability score - Combines AQI and PM2.5 data. Higher scores indicate healthier air for daily living and long-term respiratory health.</div>
