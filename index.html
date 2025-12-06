@@ -267,7 +267,8 @@
                 transition: height 0.3s ease; overflow: hidden;
             }
             
-            .sidebar.expanded { height: 50vh; }
+            .sidebar.half { height: 50vh; }
+            .sidebar.expanded { height: 85vh; }
             .sidebar.minimized { height: 0; }
             
             .sidebar-handle, .sidebar-toggle { display: none; }
@@ -287,7 +288,10 @@
             .header-left p { font-size: 11px; margin: 0; opacity: 0.8; }
             .header-buttons { display: none; }
             
-            .results { padding: 10px; height: calc(50vh - 50px); overflow-y: auto; }
+            .results { padding: 10px; overflow-y: auto; }
+            .sidebar.half .results { height: calc(50vh - 50px); }
+            .sidebar.expanded .results { height: calc(85vh - 50px); }
+            .sidebar.minimized .results { height: 0; }
             
             .map-container { height: 100vh; height: 100dvh; }
             
@@ -475,6 +479,12 @@
         const sidebar = document.querySelector('.sidebar');
         const header = document.querySelector('.header');
         let isDesktop = window.innerWidth > 768;
+        let userLocationMarker = null;
+        
+        // Initialize sidebar state
+        if (!isDesktop) {
+            sidebar.classList.add('half');
+        }
         
         // Desktop sidebar resize (keep existing functionality)
         if (isDesktop) {
@@ -512,10 +522,19 @@
             }
         }
         
-        // Mobile bottom sheet behavior
+        // Mobile three-state cycling
         if (!isDesktop) {
             header.addEventListener('click', () => {
-                sidebar.classList.toggle('expanded');
+                if (sidebar.classList.contains('half')) {
+                    sidebar.classList.remove('half');
+                    sidebar.classList.add('minimized');
+                } else if (sidebar.classList.contains('minimized')) {
+                    sidebar.classList.remove('minimized');
+                    sidebar.classList.add('expanded');
+                } else if (sidebar.classList.contains('expanded')) {
+                    sidebar.classList.remove('expanded');
+                    sidebar.classList.add('half');
+                }
             });
         }
         
@@ -524,9 +543,7 @@
         const mobileHelpBtn = document.getElementById('mobile-help-btn');
         
         if (mobileLocationBtn) {
-            mobileLocationBtn.addEventListener('click', () => {
-                document.getElementById('analyze-location-btn').click();
-            });
+            mobileLocationBtn.addEventListener('click', showUserLocation);
         }
         
         if (mobileHelpBtn) {
@@ -535,25 +552,41 @@
             });
         }
         
-        // Event Listeners
-        document.getElementById('location-btn').addEventListener('click', () => {
+        // Show user location with blue dot (no analysis)
+        function showUserLocation() {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(position => {
-                    console.log('Location button - found:', position.coords.latitude, position.coords.longitude);
+                    const lng = position.coords.longitude;
+                    const lat = position.coords.latitude;
+                    
+                    // Remove existing user location marker
+                    if (userLocationMarker) {
+                        userLocationMarker.remove();
+                    }
+                    
+                    // Add blue dot marker
+                    userLocationMarker = new maplibregl.Marker({ color: '#4285f4' })
+                        .setLngLat([lng, lat])
+                        .addTo(map);
+                    
+                    // Fly to location
                     map.flyTo({
-                        center: [position.coords.longitude, position.coords.latitude],
-                        zoom: 12
+                        center: [lng, lat],
+                        zoom: 14
                     });
                 }, (error) => {
-                    console.error('Location button error:', error);
-                    alert('Unable to get location: ' + error.message);
+                    console.error('Location error:', error);
+                    alert('Unable to get your location');
                 }, {
                     enableHighAccuracy: true,
                     timeout: 10000,
                     maximumAge: 300000
                 });
             }
-        });
+        }
+        
+        // Event Listeners
+        document.getElementById('location-btn').addEventListener('click', showUserLocation);
         
         document.getElementById('analyze-location-btn').addEventListener('click', () => {
             if (navigator.geolocation) {
@@ -763,6 +796,7 @@
                 // Auto-expand on mobile after analysis
                 if (window.innerWidth <= 768) {
                     setTimeout(() => {
+                        sidebar.classList.remove('minimized', 'half');
                         sidebar.classList.add('expanded');
                     }, 500);
                 }
