@@ -141,6 +141,14 @@
             background: linear-gradient(135deg, #f8f9fa, #e9ecef); border-radius: 16px;
         }
         
+        .category-header {
+            cursor: pointer;
+        }
+        
+        .category-details .metric-card {
+            cursor: default;
+        }
+        
         .score-circle { 
             width: 120px; height: 120px; margin: 0 auto 15px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
@@ -243,6 +251,7 @@
         /* Category score cards */
         .category-score-grid {
             display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 20px 0;
+            padding: 0 20px;
         }
         
         .category-score-card {
@@ -278,7 +287,7 @@
         
         /* Additional scores section */
         .additional-scores {
-            margin: 20px 0; padding: 15px; background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            margin: 20px 20px; padding: 15px; background: linear-gradient(135deg, #f8f9fa, #e9ecef);
             border-radius: 12px; border-left: 4px solid #2196f3; position: relative;
         }
         
@@ -335,8 +344,9 @@
             
             .score-display { padding: 15px 10px; margin-bottom: 10px; }
             .score-circle { width: 60px; height: 60px; font-size: 18px; }
-            .category-score-grid { grid-template-columns: repeat(3, 1fr); gap: 4px; }
+            .category-score-grid { grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 0 10px; }
             .category-score-card { padding: 6px; }
+            .additional-scores { margin: 10px 10px; }
             .category-score-value { font-size: 16px; }
             .category-score-label { font-size: 10px; }
             .metrics-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
@@ -969,11 +979,13 @@
                 
                 <!-- Category Scores -->
                 <div class="category-score-grid">
-                    <div class="category-score-card env-card expandable-card" onclick="toggleCategoryExpansion('env-card')">
-                        <div class="category-score-value" style="color: ${getScoreColor(scores.environmental)};">${scores.environmental}</div>
-                        <div class="category-score-label">🌱 Environmental Health</div>
-                        <div class="expand-hint">Click to see details</div>
-                        <div class="metric-tooltip">Air quality, green spaces, climate comfort, and environmental health factors</div>
+                    <div class="category-score-card env-card expandable-card">
+                        <div class="category-header" onclick="toggleCategoryExpansion('env-card')">
+                            <div class="category-score-value" style="color: ${getScoreColor(scores.environmental)};">${scores.environmental}</div>
+                            <div class="category-score-label">🌱 Environmental Health</div>
+                            <div class="expand-hint">Click to see details</div>
+                            <div class="metric-tooltip">Air quality, green spaces, climate comfort, and environmental health factors</div>
+                        </div>
                         <div class="category-details" id="env-card-details" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
                             <div class="metrics-grid" style="grid-template-columns: 1fr; gap: 8px;">
                                 <div class="metric-card" style="padding: 8px; min-height: auto;">
@@ -999,11 +1011,13 @@
                             </div>
                         </div>
                     </div>
-                    <div class="category-score-card social-card expandable-card" onclick="toggleCategoryExpansion('social-card')">
-                        <div class="category-score-value" style="color: ${getScoreColor(scores.social)};">${scores.social}</div>
-                        <div class="category-score-label">🏥 Social Infrastructure</div>
-                        <div class="expand-hint">Click to see details</div>
-                        <div class="metric-tooltip">Healthcare access, education facilities, public transport, and community services</div>
+                    <div class="category-score-card social-card expandable-card">
+                        <div class="category-header" onclick="toggleCategoryExpansion('social-card')">
+                            <div class="category-score-value" style="color: ${getScoreColor(scores.social)};">${scores.social}</div>
+                            <div class="category-score-label">🏥 Social Infrastructure</div>
+                            <div class="expand-hint">Click to see details</div>
+                            <div class="metric-tooltip">Healthcare access, education facilities, public transport, and community services</div>
+                        </div>
                         <div class="category-details" id="social-card-details" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
                             <div class="metrics-grid" style="grid-template-columns: 1fr; gap: 8px;">
                                 <div class="metric-card" style="padding: 8px; min-height: auto;">
@@ -1029,11 +1043,13 @@
                             </div>
                         </div>
                     </div>
-                    <div class="category-score-card economic-card expandable-card" onclick="toggleCategoryExpansion('economic-card')">
-                        <div class="category-score-value" style="color: ${getScoreColor(scores.economic)};">${scores.economic}</div>
-                        <div class="category-score-label">🏪 Economic Sustainability</div>
-                        <div class="expand-hint">Click to see details</div>
-                        <div class="metric-tooltip">Essential services, business infrastructure, energy potential, and economic opportunities</div>
+                    <div class="category-score-card economic-card expandable-card">
+                        <div class="category-header" onclick="toggleCategoryExpansion('economic-card')">
+                            <div class="category-score-value" style="color: ${getScoreColor(scores.economic)};">${scores.economic}</div>
+                            <div class="category-score-label">🏪 Economic Sustainability</div>
+                            <div class="expand-hint">Click to see details</div>
+                            <div class="metric-tooltip">Essential services, business infrastructure, energy potential, and economic opportunities</div>
+                        </div>
                         <div class="category-details" id="economic-card-details" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
                             <div class="metrics-grid" style="grid-template-columns: 1fr; gap: 8px;">
                                 <div class="metric-card" style="padding: 8px; min-height: auto;">
@@ -1062,10 +1078,12 @@
                 </div>
                 
                 <!-- Additional Neighborhood Scores -->
-                <div class="additional-scores expandable-card" onclick="toggleCategoryExpansion('neighborhood-scores')">
-                    <div class="additional-scores-title">🏡 Neighborhood Livelihood Index</div>
-                    <div class="expand-hint">Click to see raw data</div>
-                    <div class="metric-tooltip">Detailed scores for air quality, traffic, green living, health, energy, and climate resilience</div>
+                <div class="additional-scores expandable-card">
+                    <div class="category-header" onclick="toggleCategoryExpansion('neighborhood-scores')">
+                        <div class="additional-scores-title">🏡 Neighborhood Livelihood Index</div>
+                        <div class="expand-hint">Click to see raw data</div>
+                        <div class="metric-tooltip">Detailed scores for air quality, traffic, green living, health, energy, and climate resilience</div>
+                    </div>
                     <div class="score-row">
                         <span class="score-name">🌬️ Air Quality Index</span>
                         <span class="score-value-small" style="color: ${getScoreColor(scores.airQuality)};">${scores.airQuality}/100</span>
