@@ -69,15 +69,23 @@
         .sidebar-toggle-btn:hover { transform: scale(1.05); background: #1976D2; }
         
         .author-banner {
-            position: fixed; top: 0; left: 0; z-index: 1001;
-            background: #FFD700; padding: 8px 16px; border-radius: 0 0 8px 0;
-            box-shadow: 2px 2px 8px rgba(0,0,0,0.2); cursor: pointer;
+            position: fixed; top: 0; right: 0; z-index: 1001;
+            background: #FFD700; padding: 8px 16px; border-radius: 0 0 0 8px;
+            box-shadow: -2px 2px 8px rgba(0,0,0,0.2); cursor: pointer;
             transition: all 0.2s ease; text-decoration: none;
             color: #333; font-weight: 600; font-size: 14px;
         }
         
         .author-banner:hover {
             background: #FFC700; transform: scale(1.05);
+        }
+        
+        @media (max-width: 768px) {
+            .author-banner {
+                left: 0; right: auto;
+                border-radius: 0 0 8px 0;
+                box-shadow: 2px 2px 8px rgba(0,0,0,0.2);
+            }
         }
         
         .fab {
@@ -335,25 +343,23 @@
             .app-container { flex-direction: column; position: relative; height: 100vh; height: 100dvh; }
             
             .sidebar {
-                position: fixed; top: 20vh; left: 0; right: 0; width: 100%;
-                height: 80vh; background: white; z-index: 1000;
-                border-radius: 16px 16px 0 0; box-shadow: 0 -2px 15px rgba(0,0,0,0.1);
+                position: fixed; top: auto; bottom: 0; left: 0; right: 0; width: 100%;
+                height: 60px; background: white; z-index: 1000;
+                border-radius: 16px 16px 0 0; box-shadow: 0 -2px 15px rgba(0,0,0,0.2);
                 transition: all 0.3s ease; overflow: hidden;
             }
             
-            /* AFTER: Bottom-anchored minimized state (like a chatbox) */
-            .sidebar.minimized { 
-                top: auto;
-                bottom: 0;
-                height: 60px;
-                box-shadow: 0 -2px 15px rgba(0,0,0,0.2);
+            .sidebar.collapsed { 
+                top: 20vh;
+                bottom: auto;
+                height: 80vh;
+                box-shadow: 0 -2px 15px rgba(0,0,0,0.1);
             }
             
-            /* Retain the expanded state for full screen view */
             .sidebar.expanded { 
                 top: 5vh; 
-                bottom: auto; /* Remove the bottom constraint when expanded */
-                height: 85vh; 
+                bottom: auto;
+                height: 95vh;
             }
             
             .sidebar-handle, .sidebar-toggle { display: none; }
@@ -643,19 +649,18 @@
             }
         }
         
-        // Sidebar toggle button cycling: 70vh → minimized → expanded → 70vh
+        // Sidebar toggle: initial → collapsed ↔ expanded
         const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
         if (sidebarToggleBtn) {
             sidebarToggleBtn.addEventListener('click', () => {
-                if (sidebar.classList.contains('minimized')) {
-                    sidebar.classList.remove('minimized');
+                if (sidebar.classList.contains('collapsed')) {
+                    sidebar.classList.remove('collapsed');
                     sidebar.classList.add('expanded');
                 } else if (sidebar.classList.contains('expanded')) {
                     sidebar.classList.remove('expanded');
-                    // Back to default 50vh state
+                    sidebar.classList.add('collapsed');
                 } else {
-                    // Default state (50vh), go to minimized
-                    sidebar.classList.add('minimized');
+                    sidebar.classList.add('collapsed');
                 }
             });
         }
@@ -967,11 +972,10 @@
                     displayResults(scores, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, businessData, climateResilienceData, lat, lng, null);
                 });
                 
-                // Auto-expand on mobile after analysis
+                // Auto-collapse on mobile after analysis
                 if (window.innerWidth <= 768) {
                     setTimeout(() => {
-                        sidebar.classList.remove('minimized', 'half');
-                        sidebar.classList.add('expanded');
+                        sidebar.classList.add('collapsed');
                     }, 500);
                 }
                 
