@@ -290,14 +290,14 @@
             .app-container { flex-direction: column; position: relative; height: 100vh; height: 100dvh; }
             
             .sidebar {
-                position: fixed; top: 40vh; left: 0; right: 0; width: 100%;
-                height: 60vh; background: white; z-index: 1000;
+                position: fixed; top: 30vh; left: 0; right: 0; width: 100%;
+                height: 70vh; background: white; z-index: 1000;
                 border-radius: 16px 16px 0 0; box-shadow: 0 -2px 15px rgba(0,0,0,0.1);
                 transition: all 0.3s ease; overflow: hidden;
             }
             
             .sidebar.expanded { top: 15vh; height: 85vh; }
-            .sidebar.minimized { top: 70vh; height: 50px; }
+            .sidebar.minimized { top: 60vh; height: 50px; }
             
             .sidebar-handle, .sidebar-toggle { display: none; }
             
@@ -546,7 +546,7 @@
             }
         }
         
-        // Sidebar toggle button cycling: 60vh → minimized → expanded → 60vh
+        // Sidebar toggle button cycling: 70vh → minimized → expanded → 70vh
         const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
         if (sidebarToggleBtn) {
             sidebarToggleBtn.addEventListener('click', () => {
