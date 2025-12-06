@@ -290,8 +290,8 @@
             .app-container { flex-direction: column; position: relative; height: 100vh; height: 100dvh; }
             
             .sidebar {
-                position: fixed; top: 50vh; left: 0; right: 0; width: 100%;
-                height: 50vh; background: white; z-index: 1000;
+                position: fixed; top: 65vh; left: 0; right: 0; width: 100%;
+                height: 35vh; background: white; z-index: 1000;
                 border-radius: 16px 16px 0 0; box-shadow: 0 -2px 15px rgba(0,0,0,0.1);
                 transition: all 0.3s ease; overflow: hidden;
             }
@@ -546,7 +546,7 @@
             }
         }
         
-        // Sidebar toggle button cycling: 50vh → minimized → expanded → 50vh
+        // Sidebar toggle button cycling: 35vh → minimized → expanded → 35vh
         const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
         if (sidebarToggleBtn) {
             sidebarToggleBtn.addEventListener('click', () => {
