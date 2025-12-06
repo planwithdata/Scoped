@@ -141,6 +141,11 @@
             background: linear-gradient(135deg, #f8f9fa, #e9ecef); border-radius: 16px;
         }
         
+        .score-display h2 {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-weight: 600; letter-spacing: 0.5px;
+        }
+        
         .category-header {
             cursor: pointer;
         }
@@ -250,12 +255,12 @@
         
         /* Category score cards */
         .category-score-grid {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0;
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 20px 0;
             padding: 0;
         }
         
         .category-score-card {
-            background: white; padding: 12px; border-radius: 12px;
+            background: white; padding: 10px; border-radius: 10px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;
             border-left: 4px solid #4CAF50; position: relative;
         }
@@ -274,11 +279,11 @@
         }
         
         .category-score-value {
-            font-size: 24px; font-weight: 900; margin: 6px 0;
+            font-size: 20px; font-weight: 900; margin: 4px 0;
         }
         
         .category-score-label {
-            font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;
+            font-size: 9px; color: #666; text-transform: uppercase; letter-spacing: 0.3px;
         }
         
         .env-card { border-left-color: #4CAF50; }
@@ -297,8 +302,9 @@
         }
         
         .neighborhood-overall-score {
-            font-size: 28px; font-weight: 900; text-align: center;
-            margin: 10px 0; color: #1565c0;
+            font-size: 18px; font-weight: 700; text-align: center;
+            margin: 10px 0; padding: 8px; border-radius: 8px;
+            background: rgba(255,255,255,0.5);
         }
         
         .score-row {
@@ -317,8 +323,8 @@
             .app-container { flex-direction: column; position: relative; height: 100vh; height: 100dvh; }
             
             .sidebar {
-                position: fixed; top: 30vh; left: 0; right: 0; width: 100%;
-                height: 70vh; background: white; z-index: 1000;
+                position: fixed; top: 20vh; left: 0; right: 0; width: 100%;
+                height: 80vh; background: white; z-index: 1000;
                 border-radius: 16px 16px 0 0; box-shadow: 0 -2px 15px rgba(0,0,0,0.1);
                 transition: all 0.3s ease; overflow: hidden;
             }
@@ -349,12 +355,12 @@
             
             .score-display { padding: 15px 10px; margin-bottom: 10px; }
             .score-circle { width: 60px; height: 60px; font-size: 18px; }
-            .category-score-grid { grid-template-columns: repeat(3, 1fr); gap: 3px; padding: 0; }
-            .category-score-card { padding: 6px; }
+            .category-score-grid { grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 0; }
+            .category-score-card { padding: 4px; }
             .additional-scores { margin: 10px 0; }
-            .category-score-value { font-size: 18px; }
-            .category-score-label { font-size: 9px; }
-            .neighborhood-overall-score { font-size: 22px; }
+            .category-score-value { font-size: 14px; }
+            .category-score-label { font-size: 7px; }
+            .neighborhood-overall-score { font-size: 14px; padding: 6px; }
             .metrics-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
             .metric-card { padding: 6px; min-height: 55px; }
             .metric-title { font-size: 10px; }
@@ -406,7 +412,7 @@
             <div class="header">
                 <div class="header-left">
                     <h1>🌍 Scoped</h1>
-                    <p>Sustainability Analysis Platform</p>
+                    <p>Scope sustainability on a click</p>
                 </div>
                 <div class="header-buttons">
                     <button class="icon-btn" id="location-btn">
@@ -1091,7 +1097,7 @@
                         <div class="metric-tooltip">Detailed scores for air quality, traffic, green living, health, energy, and climate resilience</div>
                     </div>
                     <div class="neighborhood-overall-score" style="color: ${getScoreColor(scores.neighborhoodOverall)};">
-                        ${scores.neighborhoodOverall}/100
+                        ${getScoreCategory(scores.neighborhoodOverall)}
                     </div>
                     <div class="category-details" id="neighborhood-scores-details" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
                         <div class="metrics-grid" style="grid-template-columns: repeat(2, 1fr); gap: 8px;">
