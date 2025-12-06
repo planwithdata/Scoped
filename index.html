@@ -57,6 +57,17 @@
             display: none; flex-direction: column; gap: 10px;
         }
         
+        .sidebar-toggle-btn {
+            position: fixed; bottom: calc(130px + env(safe-area-inset-bottom, 0)); right: 15px; z-index: 999;
+            width: 48px; height: 48px; border-radius: 50%; border: none;
+            background: #2196F3; color: white; font-size: 18px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.25); cursor: pointer;
+            display: none; align-items: center; justify-content: center;
+            transition: all 0.2s ease;
+        }
+        
+        .sidebar-toggle-btn:hover { transform: scale(1.05); background: #1976D2; }
+        
         .fab {
             width: 48px; height: 48px; border-radius: 50%; border: none;
             background: #4CAF50; color: white; font-size: 18px;
@@ -69,6 +80,7 @@
         
         @media (max-width: 768px) {
             .fab-container { display: flex; }
+            .sidebar-toggle-btn { display: flex; }
         }
         
         .sidebar.minimized {
@@ -261,8 +273,8 @@
             .app-container { flex-direction: column; position: relative; height: 100vh; height: 100dvh; }
             
             .sidebar {
-                position: fixed; top: 50vh; left: 0; right: 0; width: 100%;
-                height: 50vh; background: white; z-index: 1000;
+                position: fixed; top: 35vh; left: 0; right: 0; width: 100%;
+                height: 65vh; background: white; z-index: 1000;
                 border-radius: 16px 16px 0 0; box-shadow: 0 -2px 15px rgba(0,0,0,0.1);
                 transition: all 0.3s ease; overflow: hidden;
             }
@@ -383,6 +395,7 @@
         </div>
         
         <!-- Mobile Floating Action Buttons -->
+        <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" title="Toggle Sidebar">↕️</button>
         <div class="fab-container">
             <button class="fab" id="mobile-location-btn" title="My Location">🎯</button>
             <button class="fab" id="mobile-help-btn" title="Help">❓</button>
@@ -478,10 +491,8 @@
         let isDesktop = window.innerWidth > 768;
         let userLocationMarker = null;
         
-        // Initialize sidebar state
-        if (!isDesktop) {
-            sidebar.classList.add('half');
-        }
+        // Initialize sidebar state - starts larger and higher
+        // Default state is already set in CSS (35vh top, 65vh height)
         
         // Desktop sidebar resize (keep existing functionality)
         if (isDesktop) {
@@ -519,9 +530,10 @@
             }
         }
         
-        // Mobile three-state cycling
-        if (!isDesktop) {
-            header.addEventListener('click', () => {
+        // Sidebar toggle button cycling
+        const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
+        if (sidebarToggleBtn) {
+            sidebarToggleBtn.addEventListener('click', () => {
                 if (sidebar.classList.contains('half')) {
                     sidebar.classList.remove('half');
                     sidebar.classList.add('minimized');
@@ -530,6 +542,9 @@
                     sidebar.classList.add('expanded');
                 } else if (sidebar.classList.contains('expanded')) {
                     sidebar.classList.remove('expanded');
+                    sidebar.classList.add('half');
+                } else {
+                    // Default state, go to half
                     sidebar.classList.add('half');
                 }
             });
