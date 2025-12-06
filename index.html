@@ -59,14 +59,26 @@
         
         .sidebar-toggle-btn {
             position: fixed; top: 20px; right: 20px; z-index: 999;
-            padding: 8px 12px; border-radius: 20px; border: none;
-            background: #2196F3; color: white; font-size: 12px;
+            width: 40px; height: 40px; border-radius: 50%; border: none;
+            background: #2196F3; color: white; font-size: 18px;
             box-shadow: 0 3px 10px rgba(0,0,0,0.25); cursor: pointer;
             display: none; align-items: center; justify-content: center;
-            transition: all 0.2s ease; white-space: nowrap;
+            transition: all 0.2s ease;
         }
         
         .sidebar-toggle-btn:hover { transform: scale(1.05); background: #1976D2; }
+        
+        .author-banner {
+            position: fixed; top: 0; left: 0; z-index: 1001;
+            background: #FFD700; padding: 8px 16px; border-radius: 0 0 8px 0;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.2); cursor: pointer;
+            transition: all 0.2s ease; text-decoration: none;
+            color: #333; font-weight: 600; font-size: 14px;
+        }
+        
+        .author-banner:hover {
+            background: #FFC700; transform: scale(1.05);
+        }
         
         .fab {
             width: 48px; height: 48px; border-radius: 50%; border: none;
@@ -127,8 +139,8 @@
             font-weight: 600; cursor: pointer; transition: all 0.3s ease;
         }
         
-        .btn-primary { background: #4CAF50; color: white; }
-        .btn-primary:hover { background: #45a049; transform: translateY(-2px); }
+        .btn-primary { background: #2196F3; color: white; }
+        .btn-primary:hover { background: #1976D2; transform: translateY(-2px); }
         
         .btn-secondary { background: #f5f5f5; color: #333; }
         .btn-secondary:hover { background: #e0e0e0; }
@@ -331,10 +343,10 @@
             
             /* AFTER: Bottom-anchored minimized state (like a chatbox) */
             .sidebar.minimized { 
-                top: auto;              /* Remove the original 'top' constraint */
-                bottom: 0;              /* Anchor the sidebar to the bottom edge of the screen */
-                height: 24px;           /* Set a manageable height for the visible handle/header */
-                box-shadow: 0 -2px 15px rgba(0,0,0,0.2); /* Ensure the handle is clearly visible */
+                top: auto;
+                bottom: 0;
+                height: 60px;
+                box-shadow: 0 -2px 15px rgba(0,0,0,0.2);
             }
             
             /* Retain the expanded state for full screen view */
@@ -462,7 +474,8 @@
         </div>
         
         <!-- Mobile Floating Action Buttons -->
-        <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" title="Minimize Sidebar">↕️ Minimize Sidebar</button>
+        <a href="https://planwithdata.github.io" target="_blank" class="author-banner">👤 Author</a>
+        <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" title="Toggle Sidebar">⇅</button>
         <div class="fab-container">
             <button class="fab" id="mobile-history-btn" title="View History">📊</button>
             <button class="fab" id="mobile-basemap-btn" title="Choose Map View">🗺️</button>
