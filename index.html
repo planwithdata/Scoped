@@ -329,8 +329,20 @@
                 transition: all 0.3s ease; overflow: hidden;
             }
             
-            .sidebar.expanded { top: 5vh; height: 90vh; }
-            .sidebar.minimized { top: 10vh; height: 20px; }
+            /* AFTER: Bottom-anchored minimized state (like a chatbox) */
+            .sidebar.minimized { 
+                top: auto;              /* Remove the original 'top' constraint */
+                bottom: 0;              /* Anchor the sidebar to the bottom edge of the screen */
+                height: 48px;           /* Set a manageable height for the visible handle/header */
+                box-shadow: 0 -2px 15px rgba(0,0,0,0.2); /* Ensure the handle is clearly visible */
+            }
+            
+            /* Retain the expanded state for full screen view */
+            .sidebar.expanded { 
+                top: 5vh; 
+                bottom: auto; /* Remove the bottom constraint when expanded */
+                height: 90vh; 
+            }
             
             .sidebar-handle, .sidebar-toggle { display: none; }
             
