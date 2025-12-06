@@ -369,14 +369,30 @@
             .sidebar-handle, .sidebar-toggle { display: none; }
             
             .header {
-                padding: 10px 15px; cursor: pointer; position: relative;
+                padding: 10px 15px; position: relative;
                 border-bottom: 1px solid #f0f0f0; min-height: 50px;
+                display: flex; align-items: center; justify-content: space-between;
             }
             
             .header::after {
                 content: ''; position: absolute; top: 6px; left: 50%;
                 transform: translateX(-50%); width: 30px; height: 3px;
                 background: #ccc; border-radius: 2px;
+            }
+            
+            .header-minimize-btn {
+                display: none; width: 28px; height: 28px; border: 2px solid rgba(255,255,255,0.5);
+                background: transparent; color: white; border-radius: 4px;
+                font-size: 18px; cursor: pointer; align-items: center; justify-content: center;
+                transition: all 0.2s ease; padding: 0; line-height: 1;
+            }
+            
+            .header-minimize-btn:hover {
+                background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.8);
+            }
+            
+            @media (max-width: 768px) {
+                .header-minimize-btn { display: flex; }
             }
             
             .header-left h1 { font-size: 16px; margin: 0; }
@@ -448,6 +464,7 @@
                     <h1>🌍 Scoped</h1>
                     <p>Scope sustainability<br>on a click</p>
                 </div>
+                <button class="header-minimize-btn" id="header-minimize-btn">−</button>
                 <div class="header-buttons">
                     <button class="icon-btn" id="location-btn">
                         🎯
@@ -474,7 +491,7 @@
             
             <div class="results" id="results">
                 <div class="loading-state" id="initial-state">
-                    <button class="btn btn-primary" id="analyze-location-btn">📍 Analyze My Location</button>
+                    <button class="btn btn-primary" id="analyze-location-btn">📍 Analyze Your Location</button>
                     <div style="font-size: 48px; margin: 20px 0;">🗺️</div>
                     <h3>Click anywhere on the map</h3>
                     <p>Get instant sustainability insights for any location worldwide</p>
@@ -654,18 +671,28 @@
         }
         
         // Sidebar toggle: collapsed → minimized ↔ expanded
+        function toggleSidebar() {
+            if (sidebar.classList.contains('minimized')) {
+                sidebar.classList.remove('minimized');
+                sidebar.classList.add('expanded');
+            } else if (sidebar.classList.contains('expanded')) {
+                sidebar.classList.remove('expanded');
+                sidebar.classList.add('minimized');
+            } else {
+                sidebar.classList.add('minimized');
+            }
+        }
+        
         const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
         if (sidebarToggleBtn) {
-            sidebarToggleBtn.addEventListener('click', () => {
-                if (sidebar.classList.contains('minimized')) {
-                    sidebar.classList.remove('minimized');
-                    sidebar.classList.add('expanded');
-                } else if (sidebar.classList.contains('expanded')) {
-                    sidebar.classList.remove('expanded');
-                    sidebar.classList.add('minimized');
-                } else {
-                    sidebar.classList.add('minimized');
-                }
+            sidebarToggleBtn.addEventListener('click', toggleSidebar);
+        }
+        
+        const headerMinimizeBtn = document.getElementById('header-minimize-btn');
+        if (headerMinimizeBtn) {
+            headerMinimizeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleSidebar();
             });
         }
         
