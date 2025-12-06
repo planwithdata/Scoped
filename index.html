@@ -25,7 +25,38 @@
         /* Sidebar */
         .sidebar { 
             width: 350px; background: white; box-shadow: 2px 0 20px rgba(0,0,0,0.1);
-            display: flex; flex-direction: column; z-index: 100;
+            display: flex; flex-direction: column; z-index: 100; position: relative;
+            resize: horizontal; overflow: auto; min-width: 250px; max-width: 80vw;
+        }
+        
+        .sidebar-handle {
+            position: absolute; right: -5px; top: 0; bottom: 0; width: 10px;
+            background: rgba(76, 175, 80, 0.3); cursor: ew-resize; z-index: 101;
+            transition: background 0.2s ease;
+        }
+        
+        .sidebar-handle:hover {
+            background: rgba(76, 175, 80, 0.6);
+        }
+        
+        .sidebar-toggle {
+            position: absolute; right: -30px; top: 50%; transform: translateY(-50%);
+            width: 30px; height: 60px; background: #4CAF50; color: white;
+            border: none; border-radius: 0 8px 8px 0; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; z-index: 102; transition: all 0.3s ease;
+        }
+        
+        .sidebar-toggle:hover {
+            background: #45a049; transform: translateY(-50%) translateX(2px);
+        }
+        
+        .sidebar.minimized {
+            width: 0; min-width: 0; overflow: hidden;
+        }
+        
+        .sidebar.minimized .sidebar-toggle {
+            right: -30px;
         }
         
         .header { 
@@ -288,12 +319,15 @@
             
             <div class="results" id="results">
                 <div class="loading-state">
-                    <button class="btn btn-primary" id="analyze-location-btn" style="margin-bottom: 20px;">📍 Analyze My Location</button>
-                    <div style="font-size: 48px; margin-bottom: 20px;">🗺️</div>
+                    <button class="btn btn-primary" id="analyze-location-btn">📍 Analyze My Location</button>
+                    <div style="font-size: 48px; margin: 20px 0;">🗺️</div>
                     <h3>Click anywhere on the map</h3>
                     <p>Get instant sustainability insights for any location worldwide</p>
                 </div>
             </div>
+            
+            <div class="sidebar-handle" id="sidebar-handle"></div>
+            <button class="sidebar-toggle" id="sidebar-toggle">‹</button>
         </div>
         
         <!-- Map -->
@@ -380,6 +414,39 @@
         let previousClicks = JSON.parse(localStorage.getItem('scopedClicks') || '[]');
         let currentMarkers = [];
 
+        // Sidebar functionality
+        let isResizing = false;
+        const sidebar = document.querySelector('.sidebar');
+        const sidebarHandle = document.getElementById('sidebar-handle');
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        
+        // Draggable resize
+        sidebarHandle.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            document.addEventListener('mousemove', handleResize);
+            document.addEventListener('mouseup', stopResize);
+        });
+        
+        function handleResize(e) {
+            if (!isResizing) return;
+            const newWidth = e.clientX;
+            if (newWidth >= 250 && newWidth <= window.innerWidth * 0.8) {
+                sidebar.style.width = newWidth + 'px';
+            }
+        }
+        
+        function stopResize() {
+            isResizing = false;
+            document.removeEventListener('mousemove', handleResize);
+            document.removeEventListener('mouseup', stopResize);
+        }
+        
+        // Toggle sidebar
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('minimized');
+            sidebarToggle.textContent = sidebar.classList.contains('minimized') ? '›' : '‹';
+        });
+        
         // Event Listeners
         document.getElementById('location-btn').addEventListener('click', () => {
             if (navigator.geolocation) {
