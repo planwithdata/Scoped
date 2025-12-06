@@ -261,16 +261,15 @@
             .app-container { flex-direction: column; position: relative; height: 100vh; height: 100dvh; }
             
             .sidebar {
-                position: fixed; bottom: env(safe-area-inset-bottom, 0); left: 0; right: 0; width: 100%;
-                height: 85vh; background: white; z-index: 1000;
+                position: fixed; bottom: 0; left: 0; right: 0; width: 100%;
+                height: 50px; background: white; z-index: 1000;
                 border-radius: 16px 16px 0 0; box-shadow: 0 -2px 15px rgba(0,0,0,0.1);
-                transition: transform 0.3s ease; overflow: hidden;
-                transform: translateY(calc(85vh - 50px));
+                transition: height 0.3s ease; overflow: hidden;
             }
             
-            .sidebar.half { transform: translateY(35vh); }
-            .sidebar.expanded { transform: translateY(0); }
-            .sidebar.minimized { transform: translateY(calc(85vh - 50px)); }
+            .sidebar.half { height: 50vh; }
+            .sidebar.expanded { height: 85vh; }
+            .sidebar.minimized { height: 50px; }
             
             .sidebar-handle, .sidebar-toggle { display: none; }
             
@@ -289,7 +288,10 @@
             .header-left p { font-size: 11px; margin: 0; opacity: 0.8; }
             .header-buttons { display: none; }
             
-            .results { padding: 10px; height: calc(85vh - 50px); overflow-y: auto; }
+            .results { padding: 10px; overflow-y: auto; }
+            .sidebar.half .results { height: calc(50vh - 50px); }
+            .sidebar.expanded .results { height: calc(85vh - 50px); }
+            .sidebar.minimized .results { height: 0; display: none; }
             
             .map-container { height: 100vh; height: 100dvh; }
             
