@@ -51,6 +51,27 @@
             background: #45a049; transform: translateY(-50%) translateX(2px);
         }
         
+        /* Mobile-specific sidebar controls */
+        @media (max-width: 768px) {
+            .sidebar-handle {
+                right: 0; top: auto; bottom: -5px; left: 0; width: 100%; height: 10px;
+                cursor: ns-resize;
+            }
+            
+            .sidebar-toggle {
+                right: 50%; top: auto; bottom: -30px; transform: translateX(50%);
+                width: 60px; height: 30px; border-radius: 0 0 8px 8px;
+            }
+            
+            .sidebar-toggle:hover {
+                transform: translateX(50%) translateY(2px);
+            }
+            
+            .sidebar.minimized .sidebar-toggle {
+                bottom: -30px;
+            }
+        }
+        
         .sidebar.minimized {
             width: 0; min-width: 0; overflow: hidden;
         }
@@ -429,9 +450,19 @@
         
         function handleResize(e) {
             if (!isResizing) return;
-            const newWidth = e.clientX;
-            if (newWidth >= 250 && newWidth <= window.innerWidth * 0.8) {
-                sidebar.style.width = newWidth + 'px';
+            
+            if (window.innerWidth <= 768) {
+                // Mobile: vertical resize
+                const newHeight = e.clientY;
+                if (newHeight >= 200 && newHeight <= window.innerHeight * 0.8) {
+                    sidebar.style.height = newHeight + 'px';
+                }
+            } else {
+                // Desktop: horizontal resize
+                const newWidth = e.clientX;
+                if (newWidth >= 250 && newWidth <= window.innerWidth * 0.8) {
+                    sidebar.style.width = newWidth + 'px';
+                }
             }
         }
         
@@ -451,19 +482,36 @@
         document.getElementById('location-btn').addEventListener('click', () => {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(position => {
+                    console.log('Location button - found:', position.coords.latitude, position.coords.longitude);
                     map.flyTo({
                         center: [position.coords.longitude, position.coords.latitude],
                         zoom: 12
                     });
+                }, (error) => {
+                    console.error('Location button error:', error);
+                    alert('Unable to get location: ' + error.message);
+                }, {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 300000
                 });
             }
         });
         
         document.getElementById('analyze-location-btn').addEventListener('click', () => {
             if (navigator.geolocation) {
+                document.getElementById('results').innerHTML = `
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <h3>Getting Your Location...</h3>
+                        <p>Please allow location access when prompted</p>
+                    </div>
+                `;
+                
                 navigator.geolocation.getCurrentPosition(position => {
                     const lng = position.coords.longitude;
                     const lat = position.coords.latitude;
+                    console.log('Location found:', lat, lng);
                     
                     // Fly to location
                     map.flyTo({
@@ -473,16 +521,40 @@
                     
                     // Trigger analysis after a short delay to let map settle
                     setTimeout(() => {
-                        // Simulate map click event
                         const clickEvent = {
                             lngLat: { lng, lat }
                         };
-                        
-                        // Call the same analysis function as map click
                         analyzeLocation(clickEvent);
                     }, 1000);
                 }, (error) => {
-                    alert('Unable to get your location. Please ensure location services are enabled.');
+                    console.error('Geolocation error:', error);
+                    let errorMsg = 'Unable to get your location. ';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMsg += 'Please allow location access and try again.';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMsg += 'Location information unavailable.';
+                            break;
+                        case error.TIMEOUT:
+                            errorMsg += 'Location request timed out.';
+                            break;
+                        default:
+                            errorMsg += 'Unknown error occurred.';
+                    }
+                    
+                    document.getElementById('results').innerHTML = `
+                        <div class="loading-state">
+                            <div style="font-size: 48px; color: #ff4444;">📍</div>
+                            <h3>Location Error</h3>
+                            <p>${errorMsg}</p>
+                            <button class="btn btn-primary" onclick="location.reload()" style="margin-top: 15px;">Try Again</button>
+                        </div>
+                    `;
+                }, {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 300000
                 });
             } else {
                 alert('Geolocation is not supported by this browser.');
