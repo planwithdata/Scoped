@@ -250,12 +250,12 @@
         
         /* Category score cards */
         .category-score-grid {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 20px 0;
-            padding: 0 20px;
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0;
+            padding: 0;
         }
         
         .category-score-card {
-            background: white; padding: 20px; border-radius: 12px;
+            background: white; padding: 12px; border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center;
             border-left: 4px solid #4CAF50; position: relative;
         }
@@ -274,11 +274,11 @@
         }
         
         .category-score-value {
-            font-size: 32px; font-weight: 900; margin: 8px 0;
+            font-size: 24px; font-weight: 900; margin: 6px 0;
         }
         
         .category-score-label {
-            font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;
+            font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;
         }
         
         .env-card { border-left-color: #4CAF50; }
@@ -287,13 +287,18 @@
         
         /* Additional scores section */
         .additional-scores {
-            margin: 20px 20px; padding: 15px; background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            margin: 20px 0; padding: 15px; background: linear-gradient(135deg, #f8f9fa, #e9ecef);
             border-radius: 12px; border-left: 4px solid #2196f3; position: relative;
         }
         
         .additional-scores-title {
             font-size: 16px; font-weight: 700; margin-bottom: 15px;
             color: #1565c0; display: flex; align-items: center; gap: 8px;
+        }
+        
+        .neighborhood-overall-score {
+            font-size: 28px; font-weight: 900; text-align: center;
+            margin: 10px 0; color: #1565c0;
         }
         
         .score-row {
@@ -344,11 +349,12 @@
             
             .score-display { padding: 15px 10px; margin-bottom: 10px; }
             .score-circle { width: 60px; height: 60px; font-size: 18px; }
-            .category-score-grid { grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 0 10px; }
-            .category-score-card { padding: 6px; }
-            .additional-scores { margin: 10px 10px; }
-            .category-score-value { font-size: 16px; }
-            .category-score-label { font-size: 10px; }
+            .category-score-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 0; }
+            .category-score-card { padding: 8px; }
+            .additional-scores { margin: 10px 0; }
+            .category-score-value { font-size: 18px; }
+            .category-score-label { font-size: 9px; }
+            .neighborhood-overall-score { font-size: 22px; }
             .metrics-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
             .metric-card { padding: 6px; min-height: 55px; }
             .metric-title { font-size: 10px; }
@@ -1081,9 +1087,13 @@
                 <div class="additional-scores expandable-card">
                     <div class="category-header" onclick="toggleCategoryExpansion('neighborhood-scores')">
                         <div class="additional-scores-title">🏡 Neighborhood Livelihood Index</div>
-                        <div class="expand-hint">Click to see raw data</div>
+                        <div class="expand-hint">Click to see details</div>
                         <div class="metric-tooltip">Detailed scores for air quality, traffic, green living, health, energy, and climate resilience</div>
                     </div>
+                    <div class="neighborhood-overall-score" style="color: ${getScoreColor(scores.neighborhoodOverall)};">
+                        ${scores.neighborhoodOverall}/100
+                    </div>
+                    <div class="category-details" id="neighborhood-scores-details" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
                     <div class="score-row">
                         <span class="score-name">🌬️ Air Quality Index</span>
                         <span class="score-value-small" style="color: ${getScoreColor(scores.airQuality)};">${scores.airQuality}/100</span>
@@ -1108,7 +1118,6 @@
                         <span class="score-name">🌊 Climate Resilience</span>
                         <span class="score-value-small" style="color: ${getScoreColor(scores.climateResilience)};">${scores.climateResilience}/100</span>
                     </div>
-                    <div class="category-details" id="neighborhood-scores-details" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
                         <div class="metrics-grid" style="grid-template-columns: repeat(2, 1fr); gap: 8px;">
                             <div class="metric-card" style="padding: 8px; min-height: auto;">
                                 <div class="metric-tooltip">Air quality livability score - Combines AQI and PM2.5 data. Higher scores indicate healthier air for daily living and long-term respiratory health.</div>
@@ -1848,6 +1857,12 @@
                 else climateResilienceScore += 8;
             }
             
+            // Calculate Neighborhood Overall Score (weighted average of 6 neighborhood scores)
+            const neighborhoodOverall = Math.round(
+                (airQualityScore + trafficScore + greenLivingScore + 
+                 healthSafetyScore + energyClimateScore + climateResilienceScore) / 6
+            );
+            
             const scores = {
                 overall: overallScore,
                 environmental: Math.round(envScore),
@@ -1860,7 +1875,8 @@
                 energyClimate: Math.round(energyClimateScore),
                 employmentOpportunity: Math.round(employmentScore),
                 climateResilience: Math.round(climateResilienceScore),
-                economicLevel: Math.round(calculateEconomicLevel(businessData, servicesData))
+                economicLevel: Math.round(calculateEconomicLevel(businessData, servicesData)),
+                neighborhoodOverall: neighborhoodOverall
             };
             
             console.log('All scores calculated:', scores);
