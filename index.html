@@ -979,8 +979,8 @@
                     airQuality: scores.airQuality,
                     traffic: scores.traffic,
                     greenLiving: scores.greenLiving,
-                    aqi: airData?.value,
-                    pm25: airData?.pm25Concentration,
+                    pm25: airData?.pm25,
+                    pm10: airData?.pm10,
                     temperature: weatherData?.temperature,
                     greenSpaces: greenData.count,
                     waterBodies: greenData.waterCount,
@@ -1067,9 +1067,9 @@
                         <div class="category-details" id="env-card-details" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
                             <div class="metrics-grid" style="grid-template-columns: 1fr; gap: 8px;">
                                 <div class="metric-card" style="padding: 8px; min-height: auto;">
-                                    <div class="metric-tooltip">Air pollution levels - Lower AQI values mean cleaner air. Critical for respiratory health and overall wellbeing. WHO recommends PM2.5 below 15 μg/m³ for sustainable living.</div>
-                                    <div class="metric-title">🌬️ Air Quality: ${airData?.value || '--'}</div>
-                                    <div class="metric-subtitle">${airData?.pm25Concentration ? `PM2.5: ${airData.pm25Concentration.toFixed(1)}` : 'AQI Index'}</div>
+                                    <div class="metric-tooltip">Air pollution levels - PM2.5 and PM10 particulate matter. Critical for respiratory health. WHO recommends PM2.5 below 15 μg/m³ for sustainable living.</div>
+                                    <div class="metric-title">🌬️ PM2.5: ${airData?.pm25 ? airData.pm25.toFixed(1) : '--'}</div>
+                                    <div class="metric-subtitle">${airData?.pm10 ? `PM10: ${airData.pm10.toFixed(1)} μg/m³` : 'μg/m³'}</div>
                                 </div>
                                 <div class="metric-card" style="padding: 8px; min-height: auto;">
                                     <div class="metric-tooltip">Parks and natural areas within 1km - Essential for mental health, air purification, and urban cooling. UN SDG 11 recommends accessible green spaces for sustainable cities.</div>
@@ -1168,9 +1168,9 @@
                     <div class="category-details" id="neighborhood-scores-details" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
                         <div class="metrics-grid" style="grid-template-columns: repeat(2, 1fr); gap: 8px;">
                             <div class="metric-card" style="padding: 8px; min-height: auto;">
-                                <div class="metric-tooltip">Air quality livability score - Combines AQI and PM2.5 data. Higher scores indicate healthier air for daily living and long-term respiratory health.</div>
+                                <div class="metric-tooltip">Air quality livability score - Based on PM2.5 and PM10 levels. Higher scores indicate healthier air for daily living and long-term respiratory health.</div>
                                 <div class="metric-title">🌬️ Air Quality: ${scores.airQuality}</div>
-                                <div class="metric-subtitle">AQI: ${airData?.value || '--'}, PM2.5: ${airData?.pm25Concentration ? airData.pm25Concentration.toFixed(1) : '--'}</div>
+                                <div class="metric-subtitle">PM2.5: ${airData?.pm25 ? airData.pm25.toFixed(1) : '--'}, PM10: ${airData?.pm10 ? airData.pm10.toFixed(1) : '--'}</div>
                             </div>
                             <div class="metric-card" style="padding: 8px; min-height: auto;">
                                 <div class="metric-tooltip">Traffic and mobility score - Balances road density (congestion) with transport access. Higher scores mean easier, less stressful daily commuting.</div>
@@ -1280,7 +1280,7 @@
                         <div class="history-score" style="color: ${scoreColor};">Score: ${click.score}/100 • ${getScoreCategory(click.score)}</div>
                         <div class="history-location">${click.lat}, ${click.lng}</div>
                         <div style="font-size: 11px; color: #999; margin-top: 4px;">
-                            ${click.aqi ? `AQI: ${click.aqi}` : ''} 
+                            ${click.pm25 ? `PM2.5: ${click.pm25.toFixed(1)}` : ''} 
                             ${click.temperature ? `• ${click.temperature.toFixed(1)}°C` : ''}
                             ${click.greenSpaces ? `• ${click.greenSpaces} green` : ''}
                         </div>
@@ -1328,7 +1328,8 @@
                         <div style="text-align: center;">
                             <strong style="color: ${scoreColor};">Score: ${click.score}/100</strong><br>
                             <small>${getScoreCategory(click.score)}</small><br>
-                            <small style="color: #666;">${click.timestamp}</small>
+                            <small style="color: #666;">${click.pm25 ? `PM2.5: ${click.pm25.toFixed(1)}` : ''}</small><br>
+                            <small style="color: #999;">${click.timestamp}</small>
                         </div>
                     `))
                     .addTo(map);
@@ -1504,34 +1505,28 @@
             try {
                 const apiKey = API_CONFIG.OPENWEATHER_API_KEY;
                 if (!apiKey) {
-                    console.warn('OpenWeatherMap API key not configured for AQI');
+                    console.warn('OpenWeatherMap API key not configured for air quality');
                     throw new Error('API key required');
                 }
                 
                 const response = await fetch(`${API_CONFIG.ENDPOINTS.OPENWEATHER}/air_pollution?lat=${lat}&lon=${lng}&appid=${apiKey}`);
                 if (!response.ok) {
-                    console.error('AQI API error:', response.status);
-                    throw new Error(`AQI API error: ${response.status}`);
+                    console.error('Air quality API error:', response.status);
+                    throw new Error(`Air quality API error: ${response.status}`);
                 }
                 
                 const data = await response.json();
                 if (!data.list || data.list.length === 0) {
-                    throw new Error('No AQI data available');
+                    throw new Error('No air quality data available');
                 }
                 
                 const pm25 = data.list[0].components.pm2_5;
-                console.log('PM2.5 concentration:', pm25);
+                const pm10 = data.list[0].components.pm10;
+                console.log('PM2.5:', pm25, 'PM10:', pm10);
                 
-                let usAqi;
-                if (pm25 <= 12) usAqi = Math.round((50 / 12) * pm25);
-                else if (pm25 <= 35.4) usAqi = Math.round(50 + ((100 - 50) / (35.4 - 12)) * (pm25 - 12));
-                else if (pm25 <= 55.4) usAqi = Math.round(100 + ((150 - 100) / (55.4 - 35.4)) * (pm25 - 35.4));
-                else usAqi = Math.min(300, Math.round(150 + ((200 - 150) / (150.4 - 55.4)) * (pm25 - 55.4)));
-                
-                console.log('Calculated US AQI:', usAqi);
-                return { value: usAqi, pm25Concentration: pm25 };
+                return { pm25, pm10 };
             } catch (error) {
-                console.error('Real AQI fetch failed:', error.message);
+                console.error('Air quality fetch failed:', error.message);
                 throw error;
             }
         }
@@ -1543,10 +1538,11 @@
             };
             
             const nearestDistance = Math.min(...Object.values(cityDistances));
-            const baseAQI = Math.max(10, 120 - (nearestDistance * 200));
-            const aqi = Math.round(baseAQI * (0.8 + Math.random() * 0.4));
+            const basePM25 = Math.max(5, 80 - (nearestDistance * 150));
+            const pm25 = Math.round(basePM25 * (0.8 + Math.random() * 0.4));
+            const pm10 = Math.round(pm25 * 1.8);
             
-            return { value: aqi };
+            return { pm25, pm10 };
         }
         
         async function fetchClimateData(lat, lng) {
@@ -1687,12 +1683,12 @@
             
             // Environmental Health Score (0-100)
             let envScore = 0;
-            const aqi = airData?.value;
-            if (aqi !== null && aqi !== undefined) {
-                if (aqi <= 50) envScore += 37.5; // 15/40 * 100
-                else if (aqi <= 100) envScore += 30;
-                else if (aqi <= 150) envScore += 20;
-                else if (aqi <= 200) envScore += 10;
+            const pm25 = airData?.pm25;
+            if (pm25 !== null && pm25 !== undefined) {
+                if (pm25 <= 12) envScore += 37.5; // 15/40 * 100 - WHO Good
+                else if (pm25 <= 35.4) envScore += 30; // Moderate
+                else if (pm25 <= 55.4) envScore += 20; // Unhealthy for sensitive
+                else if (pm25 <= 150) envScore += 10; // Unhealthy
             }
             
             const greenCount = greenData.count || 0;
@@ -1766,15 +1762,15 @@
             
             // === ADDITIONAL NEIGHBORHOOD SCORES ===
             
-            // Air Quality Index Score (0-100)
+            // Air Quality Index Score (0-100) - Based on PM2.5
             let airQualityScore = 100;
-            if (aqi !== null && aqi !== undefined) {
-                if (aqi <= 50) airQualityScore = 100;
-                else if (aqi <= 100) airQualityScore = 80;
-                else if (aqi <= 150) airQualityScore = 60;
-                else if (aqi <= 200) airQualityScore = 40;
-                else if (aqi <= 300) airQualityScore = 20;
-                else airQualityScore = 0;
+            if (pm25 !== null && pm25 !== undefined) {
+                if (pm25 <= 12) airQualityScore = 100; // WHO Good
+                else if (pm25 <= 35.4) airQualityScore = 80; // Moderate
+                else if (pm25 <= 55.4) airQualityScore = 60; // Unhealthy for sensitive
+                else if (pm25 <= 150) airQualityScore = 40; // Unhealthy
+                else if (pm25 <= 250) airQualityScore = 20; // Very unhealthy
+                else airQualityScore = 0; // Hazardous
             }
             
             // Traffic & Accessibility Score (0-100)
