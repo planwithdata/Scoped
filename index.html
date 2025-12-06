@@ -352,8 +352,12 @@
             .sidebar.minimized { 
                 top: auto;
                 bottom: 0;
-                height: 60px;
+                height: 70px;
                 box-shadow: 0 -2px 15px rgba(0,0,0,0.2);
+            }
+            
+            .sidebar.minimized .results {
+                display: none;
             }
             
             .sidebar.expanded { 
@@ -1001,7 +1005,13 @@
         }
         
         // Map click handler
-        map.on('click', analyzeLocation);
+        map.on('click', (e) => {
+            // On mobile, auto-toggle sidebar when map is clicked
+            if (window.innerWidth <= 768 && !sidebar.classList.contains('minimized')) {
+                sidebar.classList.add('minimized');
+            }
+            analyzeLocation(e);
+        });
 
         // Display results function with all scores
         function displayResults(scores, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, businessData, climateResilienceData, lat, lng, locationName) {
