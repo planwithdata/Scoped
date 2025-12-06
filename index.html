@@ -53,19 +53,19 @@
         
         /* Floating Action Buttons */
         .fab-container {
-            position: fixed; bottom: 80px; right: 20px; z-index: 999;
-            display: none; flex-direction: column; gap: 12px;
+            position: fixed; bottom: 70px; right: 15px; z-index: 999;
+            display: none; flex-direction: column; gap: 10px;
         }
         
         .fab {
-            width: 56px; height: 56px; border-radius: 50%; border: none;
-            background: #4CAF50; color: white; font-size: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer;
+            width: 48px; height: 48px; border-radius: 50%; border: none;
+            background: #4CAF50; color: white; font-size: 18px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.25); cursor: pointer;
             display: flex; align-items: center; justify-content: center;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
         }
         
-        .fab:hover { transform: scale(1.1); background: #45a049; }
+        .fab:hover { transform: scale(1.05); background: #45a049; }
         
         @media (max-width: 768px) {
             .fab-container { display: flex; }
@@ -255,48 +255,54 @@
         .score-name { font-size: 14px; color: #333; }
         .score-value-small { font-size: 18px; font-weight: 700; }
         
-        /* Mobile UI - Bottom Sheet Design */
+        /* Mobile UI - Compact Bottom Sheet */
         @media (max-width: 768px) {
             .app-container { flex-direction: column; position: relative; }
             
             .sidebar {
                 position: fixed; bottom: 0; left: 0; right: 0; width: 100%;
-                height: 60px; background: white; z-index: 1000;
-                border-radius: 20px 20px 0 0; box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+                height: 50px; background: white; z-index: 1000;
+                border-radius: 16px 16px 0 0; box-shadow: 0 -2px 15px rgba(0,0,0,0.1);
                 transition: height 0.3s ease; overflow: hidden;
             }
             
-            .sidebar.expanded { height: 85vh; }
+            .sidebar.expanded { height: 60vh; }
             .sidebar.minimized { height: 0; }
             
             .sidebar-handle, .sidebar-toggle { display: none; }
             
             .header {
-                padding: 15px 20px; cursor: pointer; position: relative;
-                border-bottom: 1px solid #f0f0f0;
+                padding: 10px 15px; cursor: pointer; position: relative;
+                border-bottom: 1px solid #f0f0f0; min-height: 50px;
             }
             
             .header::after {
-                content: ''; position: absolute; top: 8px; left: 50%;
-                transform: translateX(-50%); width: 40px; height: 4px;
-                background: #ddd; border-radius: 2px;
+                content: ''; position: absolute; top: 6px; left: 50%;
+                transform: translateX(-50%); width: 30px; height: 3px;
+                background: #ccc; border-radius: 2px;
             }
             
-            .header-left h1 { font-size: 18px; margin: 0; }
-            .header-left p { font-size: 12px; margin: 0; }
+            .header-left h1 { font-size: 16px; margin: 0; }
+            .header-left p { font-size: 11px; margin: 0; opacity: 0.8; }
             .header-buttons { display: none; }
             
-            .results { padding: 15px; height: calc(85vh - 80px); overflow-y: auto; }
+            .results { padding: 10px; height: calc(60vh - 50px); overflow-y: auto; }
             
             .map-container { height: 100vh; }
             
-            .category-score-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
-            .category-score-card { padding: 12px; }
-            .category-score-value { font-size: 20px; }
-            .metrics-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-            .score-circle { width: 70px; height: 70px; font-size: 20px; }
-            .metric-card { padding: 8px; min-height: 65px; }
-            .metric-value { font-size: 14px; }
+            .score-display { padding: 15px 10px; margin-bottom: 10px; }
+            .score-circle { width: 60px; height: 60px; font-size: 18px; }
+            .category-score-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+            .category-score-card { padding: 8px; }
+            .category-score-value { font-size: 16px; }
+            .category-score-label { font-size: 10px; }
+            .metrics-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+            .metric-card { padding: 6px; min-height: 55px; }
+            .metric-title { font-size: 10px; }
+            .metric-value { font-size: 12px; }
+            .metric-subtitle { font-size: 9px; }
+            .additional-scores { padding: 10px; margin: 10px 0; }
+            .category-section { margin: 8px 0; padding: 8px; }
         }
         
         @media (min-width: 1400px) {
