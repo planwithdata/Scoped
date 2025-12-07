@@ -8,36 +8,45 @@ const urlsToCache = [
   'https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css'
 ];
 
-// Install service worker and cache resources
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
-  );
+self.addEventListener('message', event => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
-// Fetch from cache, fallback to network
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
+  );
+  self.skipWaiting();
+});
+
 self.addEventListener('fetch', event => {
-  if (event.request.url.startsWith(self.location.origin)) {
+  if (event.request.mode === 'navigate') {
     event.respondWith(
-      caches.match(event.request)
-        .then(response => response || fetch(event.request))
+      fetch(event.request).catch(() => 
+        caches.match('/Scoped/index.html')
+      )
+    );
+  } else if (event.request.url.startsWith(self.location.origin)) {
+    event.respondWith(
+      caches.match(event.request).then(response => 
+        response || fetch(event.request).then(networkResponse => {
+          if (networkResponse.ok) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          }
+          return networkResponse;
+        })
+      )
     );
   }
 });
 
-// Update service worker
 self.addEventListener('activate', event => {
-  const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+    caches.keys().then(names => 
+      Promise.all(
+        names.map(name => name !== CACHE_NAME && caches.delete(name))
+      )
+    ).then(() => self.clients.claim())
   );
 });
