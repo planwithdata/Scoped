@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scoped - Sustainability Analysis</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Analyze sustainability metrics for any location worldwide. Environmental health, social infrastructure, and economic sustainability insights.">
+    <meta name="theme-color" content="#4CAF50">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="config.js"></script>
@@ -2276,6 +2283,15 @@
                 console.error('Climate resilience calculation failed:', error.message);
                 return { floodRisk: null, droughtRisk: null, heatIslandRisk: null };
             }
+        }
+        
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(reg => console.log('Service Worker registered'))
+                    .catch(err => console.log('Service Worker registration failed:', err));
+            });
         }
     </script>
 </body>
