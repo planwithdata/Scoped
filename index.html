@@ -1128,6 +1128,7 @@
             const btn = document.getElementById('report-card-btn');
             if (btn) {
                 btn.textContent = reportCardMode ? '📊 Data View' : '📋 Report Card';
+                btn.title = reportCardMode ? 'Show raw data values' : 'Convert all metrics to 0-100 scores';
                 btn.classList.toggle('active', reportCardMode);
             }
             
@@ -1283,7 +1284,7 @@
             
             document.getElementById('results').innerHTML = `
                 <div class="score-display">
-                    <button class="report-card-toggle" id="report-card-btn" onclick="toggleReportCard()">📋 Report Card</button>
+                    <button class="report-card-toggle" id="report-card-btn" onclick="toggleReportCard()" title="Convert all metrics to 0-100 scores">📋 Report Card</button>
                     <h2>Sustainability Score</h2>
                     <div class="score-circle" style="background: ${scoreColor};">
                         ${scores.overall}
