@@ -1,8 +1,9 @@
-const CACHE_NAME = 'scoped-v1';
+const CACHE_NAME = 'scoped-v2';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/config.js',
+  '/Scoped/',
+  '/Scoped/index.html',
+  '/Scoped/config.js',
+  '/Scoped/manifest.json',
   'https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js',
   'https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css'
 ];
@@ -17,17 +18,12 @@ self.addEventListener('install', event => {
 
 // Fetch from cache, fallback to network
 self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Cache hit - return response
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
-      }
-    )
-  );
+  if (event.request.url.startsWith(self.location.origin)) {
+    event.respondWith(
+      caches.match(event.request)
+        .then(response => response || fetch(event.request))
+    );
+  }
 });
 
 // Update service worker

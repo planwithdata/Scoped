@@ -8,8 +8,8 @@
     <!-- PWA Meta Tags -->
     <meta name="description" content="Analyze sustainability metrics for any location worldwide. Environmental health, social infrastructure, and economic sustainability insights.">
     <meta name="theme-color" content="#4CAF50">
-    <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="manifest" href="/Scoped/manifest.json">
+    <link rel="apple-touch-icon" href="/Scoped/icon-192.png">
     
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
@@ -2288,7 +2288,7 @@
         // Register Service Worker for PWA
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/service-worker.js')
+                navigator.serviceWorker.register('/Scoped/service-worker.js')
                     .then(reg => console.log('Service Worker registered'))
                     .catch(err => console.log('Service Worker registration failed:', err));
             });
