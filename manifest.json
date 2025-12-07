@@ -39,25 +39,31 @@
   "categories": ["lifestyle", "utilities", "education"],
   "screenshots": [
     {
-      "src": "/Scoped/Screenshots/screenshot1.png",
+      "src": "/Scoped/Screenshots/IMG_3763.png",
       "sizes": "1080x1920",
       "type": "image/png",
       "form_factor": "narrow"
     },
     {
-      "src": "/Scoped/Screenshots/screenshot2.png",
+      "src": "/Scoped/Screenshots/IMG_3764.png",
       "sizes": "1080x1920",
       "type": "image/png",
       "form_factor": "narrow"
     },
     {
-      "src": "/Scoped/Screenshots/screenshot3.png",
+      "src": "/Scoped/Screenshots/IMG_3765.png",
       "sizes": "1080x1920",
       "type": "image/png",
       "form_factor": "narrow"
     },
     {
-      "src": "/Scoped/Screenshots/screenshot4.png",
+      "src": "/Scoped/Screenshots/IMG_3766.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+    {
+      "src": "/Scoped/Screenshots/IMG_3767.png",
       "sizes": "1080x1920",
       "type": "image/png",
       "form_factor": "narrow"
