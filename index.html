@@ -628,10 +628,20 @@
             <button class="btn btn-primary" onclick="closePopup('sources-popup')" style="margin-top: 20px;">Close</button>
         </div>
     </div>
+    
+    <!-- Footer -->
+    <div style="position: fixed; bottom: 10px; right: 10px; z-index: 999; display: none;" id="privacy-link">
+        <a href="privacy-policy.html" target="_blank" style="color: #666; font-size: 12px; text-decoration: none; background: white; padding: 5px 10px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">Privacy Policy</a>
+    </div>
 
     <script>
         // Cloudflare Workers KV Cache URL
         const WORKER_URL = 'https://scoped-api-cache.planwithdata.workers.dev';
+        
+        // Show privacy link on desktop
+        if (window.innerWidth > 768) {
+            document.getElementById('privacy-link').style.display = 'block';
+        }
         
         // Initialize map
         const map = new maplibregl.Map({
