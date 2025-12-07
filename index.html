@@ -163,6 +163,24 @@
         .score-display { 
             text-align: center; padding: 30px 20px; margin-bottom: 20px;
             background: linear-gradient(135deg, #f8f9fa, #e9ecef); border-radius: 16px;
+            position: relative;
+        }
+        
+        .report-card-toggle {
+            position: absolute; top: 15px; right: 15px;
+            padding: 8px 16px; border: none; border-radius: 20px;
+            background: #2196F3; color: white; font-size: 12px;
+            font-weight: 600; cursor: pointer; transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+        }
+        
+        .report-card-toggle:hover {
+            background: #1976D2; transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+        }
+        
+        .report-card-toggle.active {
+            background: #4CAF50;
         }
         
         .score-display h2 {
@@ -1090,6 +1108,9 @@
             }
         }
         
+        // Report Card Mode State
+        let reportCardMode = false;
+        
         // Map click handler
         map.on('click', (e) => {
             // On mobile, auto-toggle sidebar when map is clicked
@@ -1098,6 +1119,129 @@
             }
             analyzeLocation(e);
         });
+        
+        // Toggle Report Card Mode
+        function toggleReportCard() {
+            reportCardMode = !reportCardMode;
+            const btn = document.getElementById('report-card-btn');
+            if (btn) {
+                btn.textContent = reportCardMode ? '📊 Data View' : '📋 Report Card';
+                btn.classList.toggle('active', reportCardMode);
+            }
+            
+            // Convert all metric values
+            document.querySelectorAll('.metric-card').forEach(card => {
+                const titleEl = card.querySelector('.metric-title');
+                const valueEl = card.querySelector('.metric-value');
+                const subtitleEl = card.querySelector('.metric-subtitle');
+                
+                if (!titleEl || !valueEl) return;
+                
+                const title = titleEl.textContent;
+                const originalValue = valueEl.getAttribute('data-original') || valueEl.textContent;
+                
+                if (!valueEl.getAttribute('data-original')) {
+                    valueEl.setAttribute('data-original', originalValue);
+                    if (subtitleEl) subtitleEl.setAttribute('data-original', subtitleEl.textContent);
+                }
+                
+                if (reportCardMode) {
+                    const score = calculateMetricScore(title, originalValue);
+                    valueEl.textContent = score;
+                    valueEl.style.color = getScoreColor(score);
+                    if (subtitleEl) subtitleEl.textContent = getScoreCategory(score);
+                } else {
+                    valueEl.textContent = originalValue;
+                    valueEl.style.color = '#333';
+                    if (subtitleEl) subtitleEl.textContent = subtitleEl.getAttribute('data-original') || '';
+                }
+            });
+        }
+        
+        // Calculate 0-100 score for each metric
+        function calculateMetricScore(title, value) {
+            const numValue = parseFloat(value.replace(/[^0-9.-]/g, ''));
+            
+            // PM2.5
+            if (title.includes('PM2.5')) {
+                if (numValue <= 12) return 100;
+                if (numValue <= 35.4) return 80;
+                if (numValue <= 55.4) return 60;
+                if (numValue <= 150) return 40;
+                if (numValue <= 250) return 20;
+                return 0;
+            }
+            
+            // Green Spaces
+            if (title.includes('Green Spaces')) {
+                if (numValue >= 15) return 100;
+                if (numValue >= 10) return 83;
+                if (numValue >= 5) return 58;
+                return Math.min(100, numValue * 17);
+            }
+            
+            // Water Bodies
+            if (title.includes('Water Bodies')) {
+                if (numValue >= 3) return 100;
+                return Math.min(100, numValue * 33);
+            }
+            
+            // Temperature (18-26°C optimal)
+            if (title.includes('Temperature')) {
+                if (numValue >= 18 && numValue <= 26) return 100;
+                if (numValue >= 15 && numValue <= 30) return 60;
+                if (numValue >= 10 && numValue <= 35) return 20;
+                return 0;
+            }
+            
+            // Healthcare
+            if (title.includes('Healthcare')) {
+                if (numValue >= 10) return 100;
+                if (numValue >= 7) return 80;
+                if (numValue >= 4) return 60;
+                return Math.min(100, numValue * 13);
+            }
+            
+            // Education
+            if (title.includes('Education')) {
+                if (numValue >= 8) return 100;
+                if (numValue >= 5) return 80;
+                return Math.min(100, numValue * 15);
+            }
+            
+            // Transport
+            if (title.includes('Transport')) {
+                if (numValue >= 15) return 100;
+                if (numValue >= 10) return 80;
+                return Math.min(100, numValue * 6);
+            }
+            
+            // Essential Services
+            if (title.includes('Essential Services')) {
+                if (numValue >= 20) return 100;
+                if (numValue >= 15) return 80;
+                return Math.min(100, numValue * 4);
+            }
+            
+            // Solar Energy (kWh/m²/day)
+            if (title.includes('Solar Energy')) {
+                if (numValue >= 6) return 100;
+                if (numValue >= 4.5) return 80;
+                if (numValue >= 3) return 60;
+                if (numValue >= 2) return 40;
+                return Math.min(100, numValue * 13);
+            }
+            
+            // Business Hub
+            if (title.includes('Business Hub')) {
+                if (numValue >= 15) return 100;
+                if (numValue >= 10) return 80;
+                return Math.min(100, numValue * 6);
+            }
+            
+            // Default: already a score
+            return Math.round(numValue);
+        }
 
         // Display results function with all scores
         function displayResults(scores, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, businessData, climateResilienceData, lat, lng, locationName) {
@@ -1106,6 +1250,7 @@
             
             document.getElementById('results').innerHTML = `
                 <div class="score-display">
+                    <button class="report-card-toggle" id="report-card-btn" onclick="toggleReportCard()">📋 Report Card</button>
                     <h2>Sustainability Score</h2>
                     <div class="score-circle" style="background: ${scoreColor};">
                         ${scores.overall}
