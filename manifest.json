@@ -36,7 +36,11 @@
       "purpose": "maskable"
     }
   ],
-  "categories": ["lifestyle", "utilities", "education"],
+  "categories": [
+    "lifestyle",
+    "utilities",
+    "education"
+  ],
   "screenshots": [
     {
       "src": "/Scoped/Screenshots/IMG_3763.png",
@@ -61,7 +65,7 @@
       "sizes": "1080x1920",
       "type": "image/png",
       "form_factor": "narrow"
-    }
+    },
     {
       "src": "/Scoped/Screenshots/IMG_3767.png",
       "sizes": "1080x1920",
@@ -75,7 +79,12 @@
       "short_name": "My Location",
       "description": "Analyze sustainability of your current location",
       "url": "/Scoped/?action=analyze",
-      "icons": [{ "src": "/Scoped/icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/Scoped/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }
