@@ -604,6 +604,9 @@
     </div>
 
     <script>
+        // Cloudflare Workers KV Cache URL
+        const WORKER_URL = 'https://scoped-api-cache.planwithdata.workers.dev';
+        
         // Initialize map
         const map = new maplibregl.Map({
             container: 'map',
@@ -879,6 +882,42 @@
         async function analyzeLocation(e) {
             const { lng, lat } = e.lngLat;
             
+            // Round coordinates for cache (1 decimal = ~11km grid)
+            const roundedLat = parseFloat(lat.toFixed(1));
+            const roundedLng = parseFloat(lng.toFixed(1));
+            
+            // Check Cloudflare cache first
+            try {
+                const cacheCheck = await fetch(`${WORKER_URL}?lat=${roundedLat}&lng=${roundedLng}`);
+                const cacheData = await cacheCheck.json();
+                
+                if (cacheData.cached !== false) {
+                    console.log('✅ Using cached data from Cloudflare KV');
+                    displayResults(cacheData.scores, cacheData.greenData, cacheData.airData, 
+                                  cacheData.weatherData, cacheData.climateData, cacheData.elevationData,
+                                  cacheData.noiseData, cacheData.biodiversityData, cacheData.healthcareData,
+                                  cacheData.educationData, cacheData.transportData, cacheData.servicesData,
+                                  cacheData.businessData, cacheData.climateResilienceData, 
+                                  lat, lng, cacheData.locationName);
+                    
+                    // Auto-expand on mobile
+                    if (window.innerWidth <= 768) {
+                        setTimeout(() => { sidebar.classList.add('expanded'); }, 500);
+                    }
+                    
+                    // Add marker
+                    clearMarkers();
+                    const marker = new maplibregl.Marker({ color: getScoreColor(cacheData.scores.overall) })
+                        .setLngLat([lng, lat])
+                        .setPopup(new maplibregl.Popup().setHTML(`<strong>Sustainability Score: ${cacheData.scores.overall}/100</strong><br><small>${getScoreCategory(cacheData.scores.overall)}</small>`))
+                        .addTo(map);
+                    currentMarkers.push(marker);
+                    return;
+                }
+            } catch (error) {
+                console.warn('⚠️ Cache check failed, proceeding with API calls:', error);
+            }
+            
             // Show loading
             document.getElementById('results').innerHTML = `
                 <div class="loading-state">
@@ -1002,12 +1041,26 @@
                 localStorage.setItem('scopedClicks', JSON.stringify(previousClicks));
                 
                 // Get location name
-                fetchLocationName(lat, lng).then(locationName => {
-                    // Display comprehensive results with all scores
-                    displayResults(scores, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, businessData, climateResilienceData, lat, lng, locationName);
-                }).catch(() => {
-                    displayResults(scores, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, businessData, climateResilienceData, lat, lng, null);
-                });
+                const locationName = await fetchLocationName(lat, lng).catch(() => null);
+                
+                // Store in Cloudflare cache
+                try {
+                    await fetch(`${WORKER_URL}?lat=${roundedLat}&lng=${roundedLng}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            scores, greenData, airData, weatherData, climateData, elevationData,
+                            noiseData, biodiversityData, healthcareData, educationData, transportData,
+                            servicesData, businessData, climateResilienceData, locationName
+                        })
+                    });
+                    console.log('💾 Cached result in Cloudflare KV');
+                } catch (error) {
+                    console.warn('⚠️ Failed to cache result:', error);
+                }
+                
+                // Display comprehensive results with all scores
+                displayResults(scores, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, businessData, climateResilienceData, lat, lng, locationName);
                 
                 // Auto-expand on mobile after analysis
                 if (window.innerWidth <= 768) {
