@@ -1133,26 +1133,79 @@
             
             if (!currentScoresData) return;
             
-            // Re-render with current mode
-            displayResults(
-                currentScoresData.scores,
-                currentScoresData.greenData,
-                currentScoresData.airData,
-                currentScoresData.weatherData,
-                currentScoresData.climateData,
-                currentScoresData.elevationData,
-                currentScoresData.noiseData,
-                currentScoresData.biodiversityData,
-                currentScoresData.healthcareData,
-                currentScoresData.educationData,
-                currentScoresData.transportData,
-                currentScoresData.servicesData,
-                currentScoresData.businessData,
-                currentScoresData.climateResilienceData,
-                currentScoresData.lat,
-                currentScoresData.lng,
-                currentScoresData.locationName
-            );
+            // Update only the metric cards without re-rendering
+            updateMetricCards();
+        }
+        
+        function updateMetricCards() {
+            if (!currentScoresData) return;
+            
+            const { scores, greenData, airData, weatherData, climateData, healthcareData, 
+                    educationData, transportData, servicesData, businessData } = currentScoresData;
+            
+            // Update each metric card
+            const updates = [
+                { selector: '.metric-title:contains("PM2.5")', 
+                  value: reportCardMode ? scores.airQuality : (airData?.pm25 ? airData.pm25.toFixed(1) : '--'),
+                  subtitle: reportCardMode ? getScoreCategory(scores.airQuality) : (airData?.pm10 ? `PM10: ${airData.pm10.toFixed(1)} μg/m³` : 'μg/m³') },
+                  
+                { selector: '.metric-title:contains("Green Spaces")',
+                  value: reportCardMode ? calculateGreenSpaceScore(greenData.count || 0) : (greenData.count || 0),
+                  subtitle: reportCardMode ? getScoreCategory(calculateGreenSpaceScore(greenData.count || 0)) : 'Parks & Nature' },
+                  
+                { selector: '.metric-title:contains("Water Bodies")',
+                  value: reportCardMode ? calculateWaterScore(greenData.waterCount || 0) : (greenData.waterCount || 0),
+                  subtitle: reportCardMode ? getScoreCategory(calculateWaterScore(greenData.waterCount || 0)) : 'Rivers & Lakes' },
+                  
+                { selector: '.metric-title:contains("Temperature")',
+                  value: reportCardMode ? calculateTempScore(weatherData?.temperature) : (weatherData?.temperature ? `${weatherData.temperature.toFixed(1)}°C` : '--'),
+                  subtitle: reportCardMode ? getScoreCategory(calculateTempScore(weatherData?.temperature)) : (weatherData?.humidity ? `${weatherData.humidity}% RH` : 'Climate') },
+                  
+                { selector: '.metric-title:contains("Healthcare")',
+                  value: reportCardMode ? calculateHealthcareScore(healthcareData?.total || 0) : (healthcareData?.total || 0),
+                  subtitle: reportCardMode ? getScoreCategory(calculateHealthcareScore(healthcareData?.total || 0)) : `${healthcareData?.hospitals || 0}H • ${healthcareData?.clinics || 0}C • ${healthcareData?.pharmacies || 0}P` },
+                  
+                { selector: '.metric-title:contains("Education")',
+                  value: reportCardMode ? calculateEducationScore(educationData?.total || 0) : (educationData?.total || 0),
+                  subtitle: reportCardMode ? getScoreCategory(calculateEducationScore(educationData?.total || 0)) : `${educationData?.schools || 0}S • ${educationData?.colleges || 0}C • ${educationData?.libraries || 0}L` },
+                  
+                { selector: '.metric-title:contains("Transport")',
+                  value: reportCardMode ? calculateTransportScore(transportData?.total || 0) : (transportData?.total || 0),
+                  subtitle: reportCardMode ? getScoreCategory(calculateTransportScore(transportData?.total || 0)) : `${transportData?.busStops || 0} bus • ${transportData?.stations || 0} rail` },
+                  
+                { selector: '.metric-title:contains("Essential Services")',
+                  value: reportCardMode ? calculateServicesScore(servicesData?.total || 0) : (servicesData?.total || 0),
+                  subtitle: reportCardMode ? getScoreCategory(calculateServicesScore(servicesData?.total || 0)) : `${servicesData?.banks || 0}B • ${servicesData?.markets || 0}M • ${servicesData?.police || 0}P` },
+                  
+                { selector: '.metric-title:contains("Solar Energy")',
+                  value: reportCardMode ? calculateSolarScore(climateData?.solarRadiation) : (climateData?.solarRadiation ? climateData.solarRadiation.toFixed(1) : '--'),
+                  subtitle: reportCardMode ? getScoreCategory(calculateSolarScore(climateData?.solarRadiation)) : 'kWh/m²/day' },
+                  
+                { selector: '.metric-title:contains("Business Hub")',
+                  value: reportCardMode ? calculateBusinessScore(businessData?.total || 0) : (businessData?.total || 0),
+                  subtitle: reportCardMode ? getScoreCategory(calculateBusinessScore(businessData?.total || 0)) : `${businessData?.offices || 0}O • ${businessData?.coworking || 0}C • ${businessData?.commercial || 0}S` }
+            ];
+            
+            // Apply updates
+            document.querySelectorAll('.metric-card').forEach(card => {
+                const titleEl = card.querySelector('.metric-title');
+                const valueEl = card.querySelector('.metric-value');
+                const subtitleEl = card.querySelector('.metric-subtitle');
+                
+                if (!titleEl || !valueEl) return;
+                
+                const title = titleEl.textContent.trim();
+                
+                // Find matching update
+                for (const update of updates) {
+                    if (title.includes(update.selector.match(/contains\("(.+?)"\)/)?.[1] || '')) {
+                        valueEl.textContent = update.value;
+                        valueEl.style.color = reportCardMode ? getScoreColor(parseInt(update.value) || 0) : '#333';
+                        if (subtitleEl) subtitleEl.textContent = update.subtitle;
+                        break;
+                    }
+                }
+            });
         }
         
         // Score calculation functions
