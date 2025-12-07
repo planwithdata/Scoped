@@ -1593,6 +1593,12 @@
         function flyToLocation(lat, lng) {
             map.flyTo({ center: [lng, lat], zoom: 12 });
             closePopup('history-popup');
+            
+            // Trigger analysis for this location
+            const clickEvent = {
+                lngLat: { lng, lat }
+            };
+            analyzeLocation(clickEvent);
         }
         
         function toggleSection(sectionId) {
