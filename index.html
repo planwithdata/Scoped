@@ -1534,6 +1534,10 @@
         
         async function fetchWeather(lat, lng) {
             try {
+                if (typeof API_CONFIG === 'undefined') {
+                    console.warn('API_CONFIG not loaded');
+                    return { temperature: null, humidity: null, pressure: null, windSpeed: null };
+                }
                 const apiKey = API_CONFIG.OPENWEATHER_API_KEY;
                 if (!apiKey) {
                     console.warn('OpenWeatherMap API key not configured');
@@ -1562,6 +1566,10 @@
         
         async function fetchRealAQI(lat, lng) {
             try {
+                if (typeof API_CONFIG === 'undefined') {
+                    console.warn('API_CONFIG not loaded');
+                    throw new Error('API_CONFIG not loaded');
+                }
                 const apiKey = API_CONFIG.OPENWEATHER_API_KEY;
                 if (!apiKey) {
                     console.warn('OpenWeatherMap API key not configured for air quality');
@@ -1610,6 +1618,10 @@
                 testDate.setDate(testDate.getDate() - 7);
                 const dateStr = testDate.toISOString().split('T')[0].replace(/-/g, '');
                 
+                if (typeof API_CONFIG === 'undefined') {
+                    console.warn('API_CONFIG not loaded');
+                    return { solarRadiation: null };
+                }
                 const response = await fetch(`${API_CONFIG.ENDPOINTS.NASA_POWER}?parameters=ALLSKY_SFC_SW_DWN&community=RE&longitude=${lng}&latitude=${lat}&start=${dateStr}&end=${dateStr}&format=JSON`);
                 if (!response.ok) {
                     console.error('NASA POWER API error:', response.status);
