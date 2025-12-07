@@ -168,19 +168,20 @@
         
         .report-card-toggle {
             position: absolute; top: 15px; right: 15px;
-            padding: 8px 16px; border: none; border-radius: 20px;
-            background: #2196F3; color: white; font-size: 12px;
-            font-weight: 600; cursor: pointer; transition: all 0.2s ease;
-            box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+            padding: 6px 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px;
+            background: rgba(255,255,255,0.7); color: #666; font-size: 11px;
+            font-weight: 500; cursor: pointer; transition: all 0.2s ease;
+            backdrop-filter: blur(5px);
         }
         
         .report-card-toggle:hover {
-            background: #1976D2; transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+            background: rgba(255,255,255,0.9); color: #333;
+            border-color: rgba(0,0,0,0.2);
         }
         
         .report-card-toggle.active {
-            background: #4CAF50;
+            background: rgba(76, 175, 80, 0.15); color: #4CAF50;
+            border-color: rgba(76, 175, 80, 0.3);
         }
         
         .score-display h2 {
@@ -1110,6 +1111,7 @@
         
         // Report Card Mode State
         let reportCardMode = false;
+        let currentScoresData = null;
         
         // Map click handler
         map.on('click', (e) => {
@@ -1120,8 +1122,8 @@
             analyzeLocation(e);
         });
         
-        // Toggle Report Card Mode
-        function toggleReportCard() {
+        // Toggle Report Card Mode - Global function
+        window.toggleReportCard = function() {
             reportCardMode = !reportCardMode;
             const btn = document.getElementById('report-card-btn');
             if (btn) {
@@ -1129,122 +1131,100 @@
                 btn.classList.toggle('active', reportCardMode);
             }
             
-            // Convert all metric values
-            document.querySelectorAll('.metric-card').forEach(card => {
-                const titleEl = card.querySelector('.metric-title');
-                const valueEl = card.querySelector('.metric-value');
-                const subtitleEl = card.querySelector('.metric-subtitle');
-                
-                if (!titleEl || !valueEl) return;
-                
-                const title = titleEl.textContent;
-                const originalValue = valueEl.getAttribute('data-original') || valueEl.textContent;
-                
-                if (!valueEl.getAttribute('data-original')) {
-                    valueEl.setAttribute('data-original', originalValue);
-                    if (subtitleEl) subtitleEl.setAttribute('data-original', subtitleEl.textContent);
-                }
-                
-                if (reportCardMode) {
-                    const score = calculateMetricScore(title, originalValue);
-                    valueEl.textContent = score;
-                    valueEl.style.color = getScoreColor(score);
-                    if (subtitleEl) subtitleEl.textContent = getScoreCategory(score);
-                } else {
-                    valueEl.textContent = originalValue;
-                    valueEl.style.color = '#333';
-                    if (subtitleEl) subtitleEl.textContent = subtitleEl.getAttribute('data-original') || '';
-                }
-            });
+            if (!currentScoresData) return;
+            
+            // Re-render with current mode
+            displayResults(
+                currentScoresData.scores,
+                currentScoresData.greenData,
+                currentScoresData.airData,
+                currentScoresData.weatherData,
+                currentScoresData.climateData,
+                currentScoresData.elevationData,
+                currentScoresData.noiseData,
+                currentScoresData.biodiversityData,
+                currentScoresData.healthcareData,
+                currentScoresData.educationData,
+                currentScoresData.transportData,
+                currentScoresData.servicesData,
+                currentScoresData.businessData,
+                currentScoresData.climateResilienceData,
+                currentScoresData.lat,
+                currentScoresData.lng,
+                currentScoresData.locationName
+            );
         }
         
-        // Calculate 0-100 score for each metric
-        function calculateMetricScore(title, value) {
-            const numValue = parseFloat(value.replace(/[^0-9.-]/g, ''));
-            
-            // PM2.5
-            if (title.includes('PM2.5')) {
-                if (numValue <= 12) return 100;
-                if (numValue <= 35.4) return 80;
-                if (numValue <= 55.4) return 60;
-                if (numValue <= 150) return 40;
-                if (numValue <= 250) return 20;
-                return 0;
-            }
-            
-            // Green Spaces
-            if (title.includes('Green Spaces')) {
-                if (numValue >= 15) return 100;
-                if (numValue >= 10) return 83;
-                if (numValue >= 5) return 58;
-                return Math.min(100, numValue * 17);
-            }
-            
-            // Water Bodies
-            if (title.includes('Water Bodies')) {
-                if (numValue >= 3) return 100;
-                return Math.min(100, numValue * 33);
-            }
-            
-            // Temperature (18-26°C optimal)
-            if (title.includes('Temperature')) {
-                if (numValue >= 18 && numValue <= 26) return 100;
-                if (numValue >= 15 && numValue <= 30) return 60;
-                if (numValue >= 10 && numValue <= 35) return 20;
-                return 0;
-            }
-            
-            // Healthcare
-            if (title.includes('Healthcare')) {
-                if (numValue >= 10) return 100;
-                if (numValue >= 7) return 80;
-                if (numValue >= 4) return 60;
-                return Math.min(100, numValue * 13);
-            }
-            
-            // Education
-            if (title.includes('Education')) {
-                if (numValue >= 8) return 100;
-                if (numValue >= 5) return 80;
-                return Math.min(100, numValue * 15);
-            }
-            
-            // Transport
-            if (title.includes('Transport')) {
-                if (numValue >= 15) return 100;
-                if (numValue >= 10) return 80;
-                return Math.min(100, numValue * 6);
-            }
-            
-            // Essential Services
-            if (title.includes('Essential Services')) {
-                if (numValue >= 20) return 100;
-                if (numValue >= 15) return 80;
-                return Math.min(100, numValue * 4);
-            }
-            
-            // Solar Energy (kWh/m²/day)
-            if (title.includes('Solar Energy')) {
-                if (numValue >= 6) return 100;
-                if (numValue >= 4.5) return 80;
-                if (numValue >= 3) return 60;
-                if (numValue >= 2) return 40;
-                return Math.min(100, numValue * 13);
-            }
-            
-            // Business Hub
-            if (title.includes('Business Hub')) {
-                if (numValue >= 15) return 100;
-                if (numValue >= 10) return 80;
-                return Math.min(100, numValue * 6);
-            }
-            
-            // Default: already a score
-            return Math.round(numValue);
+        // Score calculation functions
+        function calculateGreenSpaceScore(count) {
+            if (count >= 15) return 100;
+            if (count >= 10) return 83;
+            if (count >= 5) return 58;
+            return Math.min(100, Math.round(count * 17));
+        }
+        
+        function calculateWaterScore(count) {
+            if (count >= 3) return 100;
+            return Math.min(100, Math.round(count * 33));
+        }
+        
+        function calculateTempScore(temp) {
+            if (!temp) return 0;
+            if (temp >= 18 && temp <= 26) return 100;
+            if (temp >= 15 && temp <= 30) return 60;
+            if (temp >= 10 && temp <= 35) return 20;
+            return 0;
+        }
+        
+        function calculateHealthcareScore(count) {
+            if (count >= 10) return 100;
+            if (count >= 7) return 80;
+            if (count >= 4) return 60;
+            return Math.min(100, Math.round(count * 13));
+        }
+        
+        function calculateEducationScore(count) {
+            if (count >= 8) return 100;
+            if (count >= 5) return 80;
+            return Math.min(100, Math.round(count * 15));
+        }
+        
+        function calculateTransportScore(count) {
+            if (count >= 15) return 100;
+            if (count >= 10) return 80;
+            return Math.min(100, Math.round(count * 6));
+        }
+        
+        function calculateServicesScore(count) {
+            if (count >= 20) return 100;
+            if (count >= 15) return 80;
+            return Math.min(100, Math.round(count * 4));
+        }
+        
+        function calculateSolarScore(solar) {
+            if (!solar) return 0;
+            if (solar >= 6) return 100;
+            if (solar >= 4.5) return 80;
+            if (solar >= 3) return 60;
+            if (solar >= 2) return 40;
+            return Math.min(100, Math.round(solar * 13));
+        }
+        
+        function calculateBusinessScore(count) {
+            if (count >= 15) return 100;
+            if (count >= 10) return 80;
+            return Math.min(100, Math.round(count * 6));
         }
 
         // Display results function with all scores
         function displayResults(scores, greenData, airData, weatherData, climateData, elevationData, noiseData, biodiversityData, healthcareData, educationData, transportData, servicesData, businessData, climateResilienceData, lat, lng, locationName) {
+            // Store data for report card toggle
+            currentScoresData = {
+                scores, greenData, airData, weatherData, climateData, elevationData,
+                noiseData, biodiversityData, healthcareData, educationData, transportData,
+                servicesData, businessData, climateResilienceData, lat, lng, locationName
+            };
+            
             const scoreColor = getScoreColor(scores.overall);
             const scoreCategory = getScoreCategory(scores.overall);
             
@@ -1272,23 +1252,27 @@
                             <div class="metrics-grid" style="grid-template-columns: 1fr; gap: 8px;">
                                 <div class="metric-card" style="padding: 8px; min-height: auto;">
                                     <div class="metric-tooltip">Air pollution levels - PM2.5 and PM10 particulate matter. Critical for respiratory health. WHO recommends PM2.5 below 15 μg/m³ for sustainable living.</div>
-                                    <div class="metric-title">🌬️ PM2.5: ${airData?.pm25 ? airData.pm25.toFixed(1) : '--'}</div>
-                                    <div class="metric-subtitle">${airData?.pm10 ? `PM10: ${airData.pm10.toFixed(1)} μg/m³` : 'μg/m³'}</div>
+                                    <div class="metric-title">🌬️ PM2.5</div>
+                                    <div class="metric-value">${reportCardMode ? scores.airQuality : (airData?.pm25 ? airData.pm25.toFixed(1) : '--')}</div>
+                                    <div class="metric-subtitle">${reportCardMode ? getScoreCategory(scores.airQuality) : (airData?.pm10 ? `PM10: ${airData.pm10.toFixed(1)} μg/m³` : 'μg/m³')}</div>
                                 </div>
                                 <div class="metric-card" style="padding: 8px; min-height: auto;">
                                     <div class="metric-tooltip">Parks and natural areas within 1km - Essential for mental health, air purification, and urban cooling. UN SDG 11 recommends accessible green spaces for sustainable cities.</div>
-                                    <div class="metric-title">🌳 Green Spaces: ${greenData.count || 0}</div>
-                                    <div class="metric-subtitle">Parks & Nature</div>
+                                    <div class="metric-title">🌳 Green Spaces</div>
+                                    <div class="metric-value">${reportCardMode ? calculateGreenSpaceScore(greenData.count || 0) : (greenData.count || 0)}</div>
+                                    <div class="metric-subtitle">${reportCardMode ? getScoreCategory(calculateGreenSpaceScore(greenData.count || 0)) : 'Parks & Nature'}</div>
                                 </div>
                                 <div class="metric-card" style="padding: 8px; min-height: auto;">
                                     <div class="metric-tooltip">Rivers, lakes, and water features - Provide natural cooling, biodiversity habitat, and recreational opportunities. Critical for climate resilience and sustainable urban development.</div>
-                                    <div class="metric-title">💧 Water Bodies: ${greenData.waterCount || 0}</div>
-                                    <div class="metric-subtitle">Rivers & Lakes</div>
+                                    <div class="metric-title">💧 Water Bodies</div>
+                                    <div class="metric-value">${reportCardMode ? calculateWaterScore(greenData.waterCount || 0) : (greenData.waterCount || 0)}</div>
+                                    <div class="metric-subtitle">${reportCardMode ? getScoreCategory(calculateWaterScore(greenData.waterCount || 0)) : 'Rivers & Lakes'}</div>
                                 </div>
                                 <div class="metric-card" style="padding: 8px; min-height: auto;">
                                     <div class="metric-tooltip">Current temperature and humidity - Optimal range 18-26°C for human comfort and energy efficiency. Affects heating/cooling costs and quality of life in sustainable communities.</div>
-                                    <div class="metric-title">🌡️ Temperature: ${weatherData?.temperature ? `${weatherData.temperature.toFixed(1)}°C` : '--'}</div>
-                                    <div class="metric-subtitle">${weatherData?.humidity ? `${weatherData.humidity}% RH` : 'Climate'}</div>
+                                    <div class="metric-title">🌡️ Temperature</div>
+                                    <div class="metric-value">${reportCardMode ? calculateTempScore(weatherData?.temperature) : (weatherData?.temperature ? `${weatherData.temperature.toFixed(1)}°C` : '--')}</div>
+                                    <div class="metric-subtitle">${reportCardMode ? getScoreCategory(calculateTempScore(weatherData?.temperature)) : (weatherData?.humidity ? `${weatherData.humidity}% RH` : 'Climate')}</div>
                                 </div>
                             </div>
                         </div>
@@ -1304,18 +1288,21 @@
                             <div class="metrics-grid" style="grid-template-columns: 1fr; gap: 8px;">
                                 <div class="metric-card" style="padding: 8px; min-height: auto;">
                                     <div class="metric-tooltip">Healthcare facilities within 2km - Essential for community health and emergency access. WHO recommends healthcare within 30 minutes travel for sustainable development and social equity.</div>
-                                    <div class="metric-title">🏥 Healthcare: ${healthcareData?.total || 0}</div>
-                                    <div class="metric-subtitle">${healthcareData?.hospitals || 0}H • ${healthcareData?.clinics || 0}C • ${healthcareData?.pharmacies || 0}P</div>
+                                    <div class="metric-title">🏥 Healthcare</div>
+                                    <div class="metric-value">${reportCardMode ? calculateHealthcareScore(healthcareData?.total || 0) : (healthcareData?.total || 0)}</div>
+                                    <div class="metric-subtitle">${reportCardMode ? getScoreCategory(calculateHealthcareScore(healthcareData?.total || 0)) : `${healthcareData?.hospitals || 0}H • ${healthcareData?.clinics || 0}C • ${healthcareData?.pharmacies || 0}P`}</div>
                                 </div>
                                 <div class="metric-card" style="padding: 8px; min-height: auto;">
                                     <div class="metric-tooltip">Educational institutions within 2km - Critical for human development and social mobility. UN SDG 4 emphasizes accessible quality education for sustainable communities.</div>
-                                    <div class="metric-title">🏫 Education: ${educationData?.total || 0}</div>
-                                    <div class="metric-subtitle">${educationData?.schools || 0}S • ${educationData?.colleges || 0}C • ${educationData?.libraries || 0}L</div>
+                                    <div class="metric-title">🏫 Education</div>
+                                    <div class="metric-value">${reportCardMode ? calculateEducationScore(educationData?.total || 0) : (educationData?.total || 0)}</div>
+                                    <div class="metric-subtitle">${reportCardMode ? getScoreCategory(calculateEducationScore(educationData?.total || 0)) : `${educationData?.schools || 0}S • ${educationData?.colleges || 0}C • ${educationData?.libraries || 0}L`}</div>
                                 </div>
                                 <div class="metric-card" style="padding: 8px; min-height: auto;">
                                     <div class="metric-tooltip">Public transport access within 1.5km - Reduces car dependency and emissions. Transit-oriented development principles support sustainable urban mobility and social inclusion.</div>
-                                    <div class="metric-title">🚌 Transport: ${transportData?.total || 0}</div>
-                                    <div class="metric-subtitle">${transportData?.busStops || 0} bus • ${transportData?.stations || 0} rail</div>
+                                    <div class="metric-title">🚌 Transport</div>
+                                    <div class="metric-value">${reportCardMode ? calculateTransportScore(transportData?.total || 0) : (transportData?.total || 0)}</div>
+                                    <div class="metric-subtitle">${reportCardMode ? getScoreCategory(calculateTransportScore(transportData?.total || 0)) : `${transportData?.busStops || 0} bus • ${transportData?.stations || 0} rail`}</div>
                                 </div>
                                 <div class="metric-card" style="padding: 8px; min-height: auto;">
                                     <div class="metric-tooltip">Economic prosperity indicator based on business infrastructure - Higher values suggest better job opportunities and services. Important for long-term community sustainability and reduced inequality.</div>
@@ -1336,18 +1323,21 @@
                             <div class="metrics-grid" style="grid-template-columns: 1fr; gap: 8px;">
                                 <div class="metric-card" style="padding: 8px; min-height: auto;">
                                     <div class="metric-tooltip">Essential services within 1.5km - Banks, markets, and safety services for daily needs. Critical for economic resilience and community self-sufficiency in sustainable neighborhoods.</div>
-                                    <div class="metric-title">🏦 Essential Services: ${servicesData?.total || 0}</div>
-                                    <div class="metric-subtitle">${servicesData?.banks || 0}B • ${servicesData?.markets || 0}M • ${servicesData?.police || 0}P</div>
+                                    <div class="metric-title">🏦 Essential Services</div>
+                                    <div class="metric-value">${reportCardMode ? calculateServicesScore(servicesData?.total || 0) : (servicesData?.total || 0)}</div>
+                                    <div class="metric-subtitle">${reportCardMode ? getScoreCategory(calculateServicesScore(servicesData?.total || 0)) : `${servicesData?.banks || 0}B • ${servicesData?.markets || 0}M • ${servicesData?.police || 0}P`}</div>
                                 </div>
                                 <div class="metric-card" style="padding: 8px; min-height: auto;">
                                     <div class="metric-tooltip">Solar energy potential from NASA data - Higher values enable renewable energy adoption and reduced carbon footprint. Key for energy independence and climate action (UN SDG 7).</div>
-                                    <div class="metric-title">☀️ Solar Energy: ${climateData?.solarRadiation ? climateData.solarRadiation.toFixed(1) : '--'}</div>
-                                    <div class="metric-subtitle">kWh/m²/day</div>
+                                    <div class="metric-title">☀️ Solar Energy</div>
+                                    <div class="metric-value">${reportCardMode ? calculateSolarScore(climateData?.solarRadiation) : (climateData?.solarRadiation ? climateData.solarRadiation.toFixed(1) : '--')}</div>
+                                    <div class="metric-subtitle">${reportCardMode ? getScoreCategory(calculateSolarScore(climateData?.solarRadiation)) : 'kWh/m²/day'}</div>
                                 </div>
                                 <div class="metric-card" style="padding: 8px; min-height: auto;">
                                     <div class="metric-tooltip">Business infrastructure within 2km - Offices, coworking spaces, and commercial areas. Indicates economic vitality and job creation potential for sustainable local economy.</div>
-                                    <div class="metric-title">🏢 Business Hub: ${businessData?.total || 0}</div>
-                                    <div class="metric-subtitle">${businessData?.offices || 0}O • ${businessData?.coworking || 0}C • ${businessData?.commercial || 0}S</div>
+                                    <div class="metric-title">🏢 Business Hub</div>
+                                    <div class="metric-value">${reportCardMode ? calculateBusinessScore(businessData?.total || 0) : (businessData?.total || 0)}</div>
+                                    <div class="metric-subtitle">${reportCardMode ? getScoreCategory(calculateBusinessScore(businessData?.total || 0)) : `${businessData?.offices || 0}O • ${businessData?.coworking || 0}C • ${businessData?.commercial || 0}S`}</div>
                                 </div>
                                 <div class="metric-card" style="padding: 8px; min-height: auto;">
                                     <div class="metric-tooltip">Employment opportunities score - Based on offices, commercial, and industrial areas. Higher scores indicate better job market and economic sustainability for residents.</div>
